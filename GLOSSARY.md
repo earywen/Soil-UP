@@ -13,7 +13,7 @@ Polygone géographique précis délimitant le contour spatial du site d'étude s
 _Avoid_: Périmètre, zone, tracé
 
 **Buffer d'investigation** :
-Rayon géographique concentrique appliqué autour de l'emprise pour rechercher les entités environnantes selon la thématique (ex. 100m, 500m, 1000m).
+Rayon géographique concentrique appliqué autour de l'emprise pour rechercher les entités environnantes selon la thématique (ex. 100m, 500m, 1000m, 1500m).
 _Avoid_: Zone tampon, marge, périmètre élargi
 
 **Dossier d'étude** :
@@ -36,6 +36,38 @@ _Avoid_: Capture d'écran, screenshot, plan
 Modèle de document Microsoft Word (`template.docx`) définissant la mise en page, les styles, le logo et les emplacements de substitution des données et cartes du rapport.
 _Avoid_: Template brut, feuille de style
 
+## Géologie & Hydrogéologie (Sous-sol)
+
+**BSS (Banque du Sous-Sol)** :
+Inventaire national officiel du BRGM regroupant les ouvrages souterrains déclarés (forages, sondages carottés, puits d'eau, piézomètres) avec leur identifiant officiel et leur profondeur atteinte.
+_Avoid_: Base des forages, registre des trous
+
+**Log géologique (Coupe lithologique)** :
+Relevé descriptif vertical des couches de terrains géologiques et remblais anthropiques traversés par un forage, documenté dans la fiche officielle du BRGM.
+_Avoid_: Schéma de sol, profil de terre
+
+**Piézomètre** :
+Ouvrage foré équipé pour mesurer la profondeur de la surface libre d'une nappe d'eau souterraine (aquifère).
+_Avoid_: Puits quelconque, trou d'eau
+
+**Cote piézométrique** :
+Altitude NGF (système altimétrique officiel français NGF-IGN69) de la nappe phréatique calculée par différence entre l'altitude du repère de mesure et la profondeur d'eau mesurée sous le sol.
+_Avoid_: Hauteur d'eau brute
+
+**MNT (Modèle Numérique de Terrain)** :
+Données topographiques officielles d'altimétrie (IGN RGE ALTI) permettant de déterminer l'altitude exacte du site d'étude et le sens de la pente du relief.
+_Avoid_: Relief Google, carte d'altitude
+
+## Milieux Naturels & Biodiversité
+
+**ZNIEFF (Zone Naturelle d'Intérêt Écologique, Faunistique et Floristique)** :
+Inventaire naturaliste scientifique piloté par le MNHN / INPN identifiant les secteurs de grand intérêt biologique (Type I) et les grands ensembles naturels riches et peu modifiés (Type II).
+_Avoid_: Réserve naturelle générique
+
+**Natura 2000** :
+Réseau écologique européen de sites naturels protégés comprenant les Zones Spéciales de Conservation (ZSC, directive Habitats) et les Zones de Protection Spéciale (ZPS, directive Oiseaux).
+_Avoid_: Parc régional, zone verte
+
 ## Architecture Applicative
 
 **Connecteur de source** :
@@ -56,22 +88,5 @@ _Avoid_: Registre usines
 Inventaire des sites pollués ou potentiellement pollués faisant l'objet d'une action des pouvoirs publics.
 _Avoid_: Fichier sols pollués
 
-**Carte géologique** :
-Données lithologiques, stratigraphiques et structurales du BRGM caractérisant la nature du sous-sol du site d'étude.
-_Avoid_: Carte des sols
-
-**Photos aériennes historiques** :
-Imagerie aérienne archivée issue de l'IGN (mission Remonter le temps) permettant de retracer l'évolution temporelle de l'occupation du sol.
-_Avoid_: Images satellites, vues du ciel
-
-**BSS (Banque du Sous-Sol)** :
-Base de données nationale gérée par le BRGM recensant les forages, puits, piézomètres et coupes géologiques déclarées.
-_Avoid_: Base forages, registre des puits
-
-**Captage AEP** :
-Point de prélèvement d'eau brute destinée à la consommation humaine et ses périmètres de protection réglementaires (immédiat, rapproché, éloigné).
-_Avoid_: Prise d'eau, captage potable
-
-**INPN** :
-Inventaire National du Patrimoine Naturel recensant les zonages de protection écologique et patrimoniale (ZNIEFF, Natura 2000, réserves naturelles).
-_Avoid_: Registre biodiversité
+**ICPE** :
+Installations Classées pour la Protection de l'Environnement (usines, entrepôts, carrières, élevages) soumises à déclaration, enregistrement ou autorisation préfectorale.
