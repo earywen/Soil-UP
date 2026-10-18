@@ -27,6 +27,19 @@ venv/
 ENV/
 env/
 
+# Node & Next.js
+node_modules/
+.next/
+frontend/node_modules/
+frontend/.next/
+frontend/out/
+*.log
+
+# Agents & local tooling
+.agent/
+.gemini/
+.hermes/
+
 # Testing & Coverage
 .pytest_cache/
 .coverage
