@@ -1,5 +1,5 @@
 from typing import List
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Response
 from sqlalchemy.orm import Session
 
 from soil_up.database import get_db
@@ -11,9 +11,11 @@ from soil_up.schemas.study import (
     StudyListItemResponse,
 )
 from soil_up.services.georisques import GeorisquesConnector
+from soil_up.services.report import ReportGeneratorService
 
 router = APIRouter(prefix="/api/studies", tags=["Studies"])
 georisques_connector = GeorisquesConnector()
+report_service = ReportGeneratorService()
 
 @router.post("/", response_model=StudyResponse, status_code=status.HTTP_201_CREATED)
 def create_study(payload: StudyCreateRequest, db: Session = Depends(get_db)):
@@ -89,3 +91,30 @@ async def collect_study_data(study_id: int, db: Session = Depends(get_db)):
         record.collected_data = {"error": str(exc)}
         db.commit()
         raise HTTPException(status_code=502, detail=f"Échec de la collecte : {exc}")
+
+@router.get("/{study_id}/export/docx")
+def export_study_docx(study_id: int, db: Session = Depends(get_db)):
+    record = db.query(StudyModel).filter(StudyModel.id == study_id).first()
+    if not record:
+        raise HTTPException(status_code=404, detail="Dossier d'étude introuvable.")
+
+    if record.status not in ("completed", "partial_error") or not record.collected_data:
+        raise HTTPException(
+            status_code=400,
+            detail="Veuillez d'abord lancer la collecte des données avant d'exporter le rapport."
+        )
+
+    buffer = report_service.generate_docx(
+        study_name=record.name,
+        address=record.address,
+        buffer_meters=record.buffer_meters,
+        parcels=record.parcels or [],
+        collected_data=record.collected_data or {},
+    )
+
+    filename = f"rapport_pre_diagnostic_{study_id}.docx"
+    return Response(
+        content=buffer.getvalue(),
+        media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'}
+    )
