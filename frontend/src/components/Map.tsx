@@ -23,6 +23,10 @@ interface MapProps {
   icpeSites: IcpeItem[];
   bssBoreholes?: BssBoreholeItem[];
   piezometres?: PiezometreItem[];
+  onMapClick?: (lat: number, lon: number) => void;
+  isDrawingMode?: boolean;
+  onToggleDrawingMode?: (active: boolean) => void;
+  onCustomPolygonDrawn?: (geometry: GeoJsonObject) => void;
 }
 
 const DynamicMapInner = dynamic(() => import("./MapInner"), {

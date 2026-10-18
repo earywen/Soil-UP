@@ -2,6 +2,7 @@ from fastapi import APIRouter, Query, HTTPException
 from soil_up.schemas.cadastre import (
     CadastralParcelCollection,
     ParcelUnionRequest,
+    CustomEmpriseRequest,
     SiteEmpriseResult,
 )
 from soil_up.services.cadastre import IgnCadastreService
@@ -30,3 +31,12 @@ async def compute_parcels_union(payload: ParcelUnionRequest):
         raise HTTPException(status_code=400, detail=str(ve))
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"Erreur lors du calcul de l'emprise : {exc}")
+
+@router.post("/custom-emprise", response_model=SiteEmpriseResult)
+async def compute_custom_emprise(payload: CustomEmpriseRequest):
+    try:
+        return cadastre_service.compute_custom_emprise(payload.geometry)
+    except ValueError as ve:
+        raise HTTPException(status_code=400, detail=str(ve))
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Erreur lors du calcul de l'emprise libre : {exc}")

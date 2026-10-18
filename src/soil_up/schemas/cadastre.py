@@ -26,3 +26,6 @@ class SiteEmpriseResult(BaseModel):
     type: str = "Feature"
     geometry: Dict[str, Any] = Field(..., description="Géométrie de l'emprise fusionnée en GeoJSON")
     properties: Dict[str, Any] = Field(..., description="Métadonnées de l'emprise (surface, liste des IDU)")
+
+class CustomEmpriseRequest(BaseModel):
+    geometry: Dict[str, Any] = Field(..., description="Géométrie GeoJSON du polygone tracé librement")

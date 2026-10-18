@@ -89,3 +89,44 @@ class IgnCadastreService:
                 "calculated_area_m2": calculated_area_m2,
             }
         )
+
+    def compute_custom_emprise(self, geometry: Dict[str, Any]) -> SiteEmpriseResult:
+        if not geometry or not isinstance(geometry, dict):
+            raise ValueError("Géométrie d'emprise invalide.")
+
+        geom_type = geometry.get("type")
+        if geom_type not in ("Polygon", "MultiPolygon"):
+            raise ValueError("L'emprise libre doit être un polygone GeoJSON (Polygon ou MultiPolygon).")
+
+        coords = geometry.get("coordinates")
+        if not coords or len(coords) == 0:
+            raise ValueError("Coordonnées de polygone absentes.")
+
+        # Ensure at least 4 coordinates for a closed linear ring (3 points + closure)
+        if geom_type == "Polygon" and (not coords[0] or len(coords[0]) < 4):
+            raise ValueError("Un polygone doit comporter au moins 3 sommets distincts et être fermé.")
+
+        try:
+            poly_shape = shape(geometry)
+            if not poly_shape.is_valid:
+                poly_shape = poly_shape.buffer(0)
+            
+            lambert_shape = shapely.transform(poly_shape, _reproject_to_lambert93)
+            area_m2 = round(lambert_shape.area, 2)
+
+            if area_m2 <= 0:
+                raise ValueError("La surface calculée de l'emprise doit être strictement positive.")
+
+            return SiteEmpriseResult(
+                geometry=geometry,
+                properties={
+                    "calculated_area_m2": area_m2,
+                    "custom_drawing": True,
+                    "parcels_count": 0,
+                    "parcel_ids": [],
+                }
+            )
+        except Exception as exc:
+            if isinstance(exc, ValueError):
+                raise
+            raise ValueError(f"Erreur de géométrie du polygone : {exc}")

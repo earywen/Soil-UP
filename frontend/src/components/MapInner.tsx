@@ -10,6 +10,7 @@ import {
   PiezometreItem,
   GeoJsonObject,
 } from "@/types";
+import { PenTool, Undo2, Check, MousePointer } from "lucide-react";
 
 interface MapInnerProps {
   center: [number, number]; // [lat, lon]
@@ -23,6 +24,10 @@ interface MapInnerProps {
   icpeSites: IcpeItem[];
   bssBoreholes?: BssBoreholeItem[];
   piezometres?: PiezometreItem[];
+  onMapClick?: (lat: number, lon: number) => void;
+  isDrawingMode?: boolean;
+  onToggleDrawingMode?: (active: boolean) => void;
+  onCustomPolygonDrawn?: (geometry: GeoJsonObject) => void;
 }
 
 export default function MapInner({
@@ -37,17 +42,26 @@ export default function MapInner({
   icpeSites,
   bssBoreholes = [],
   piezometres = [],
+  onMapClick,
+  isDrawingMode = false,
+  onToggleDrawingMode,
+  onCustomPolygonDrawn,
 }: MapInnerProps) {
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<L.Map | null>(null);
 
-  // Basemap switcher state
+  // Basemap & overlay state
   const [activeBasemap, setActiveBasemap] = useState<"osm" | "ortho">("osm");
   const [showCadastreOverlay, setShowCadastreOverlay] = useState<boolean>(true);
+
+  // Freehand drawing state
+  const [drawingPoints, setDrawingPoints] = useState<L.LatLng[]>([]);
+  const drawingLayerGroupRef = useRef<L.LayerGroup | null>(null);
 
   // Layer groups for dynamic updates
   const osmTileLayerRef = useRef<L.TileLayer | null>(null);
   const orthoTileLayerRef = useRef<L.TileLayer | null>(null);
+  const cadastreWMTSRef = useRef<L.TileLayer | null>(null);
   const parcelsLayerGroupRef = useRef<L.LayerGroup | null>(null);
   const empriseLayerGroupRef = useRef<L.LayerGroup | null>(null);
   const bufferLayerGroupRef = useRef<L.LayerGroup | null>(null);
@@ -61,6 +75,7 @@ export default function MapInner({
       center: center,
       zoom: zoom,
       zoomControl: false,
+      doubleClickZoom: !isDrawingMode,
     });
 
     // 1. OpenStreetMap Tile Layer
@@ -79,9 +94,23 @@ export default function MapInner({
       }
     );
 
+    // 3. National Cadastre WMTS Transparent Overlay Layer
+    const cadastreLayer = L.tileLayer(
+      "https://data.geopf.fr/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=CADASTRALPARCELS.PARCELLAIRE_EXPRESS&STYLE=normal&FORMAT=image/png&TILEMATRIXSET=PM&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}",
+      {
+        attribution: '&copy; <a href="https://www.cadastre.gouv.fr/">IGN Parcellaire Express</a>',
+        maxZoom: 20,
+        minZoom: 14,
+        opacity: 0.85,
+      }
+    );
+
     osmLayer.addTo(map);
+    cadastreLayer.addTo(map);
+
     osmTileLayerRef.current = osmLayer;
     orthoTileLayerRef.current = orthoLayer;
+    cadastreWMTSRef.current = cadastreLayer;
 
     // Controls
     L.control.zoom({ position: "bottomright" }).addTo(map);
@@ -91,6 +120,7 @@ export default function MapInner({
     empriseLayerGroupRef.current = L.layerGroup().addTo(map);
     bufferLayerGroupRef.current = L.layerGroup().addTo(map);
     markersLayerGroupRef.current = L.layerGroup().addTo(map);
+    drawingLayerGroupRef.current = L.layerGroup().addTo(map);
 
     mapInstanceRef.current = map;
 
@@ -100,6 +130,92 @@ export default function MapInner({
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Map Click Listener (Direct parcel selection OR Drawing vertex)
+  useEffect(() => {
+    const map = mapInstanceRef.current;
+    if (!map) return;
+
+    // Toggle doubleClickZoom according to drawing mode
+    if (isDrawingMode) {
+      map.doubleClickZoom.disable();
+    } else {
+      map.doubleClickZoom.enable();
+    }
+
+    const handleClick = (e: L.LeafletMouseEvent) => {
+      if (isDrawingMode) {
+        setDrawingPoints((prev) => [...prev, e.latlng]);
+      } else if (onMapClick) {
+        onMapClick(e.latlng.lat, e.latlng.lng);
+      }
+    };
+
+    map.on("click", handleClick);
+    return () => {
+      map.off("click", handleClick);
+    };
+  }, [isDrawingMode, onMapClick]);
+
+  // Render Drawing in progress
+  useEffect(() => {
+    const drawGroup = drawingLayerGroupRef.current;
+    if (!drawGroup) return;
+
+    drawGroup.clearLayers();
+
+    if (drawingPoints.length === 0) return;
+
+    // Draw markers on vertices
+    drawingPoints.forEach((pt, idx) => {
+      L.circleMarker(pt, {
+        radius: idx === 0 ? 6 : 4,
+        color: idx === 0 ? "#1b4332" : "#2563eb",
+        fillColor: idx === 0 ? "#2d6a4f" : "#ffffff",
+        fillOpacity: 1,
+        weight: 2,
+      }).addTo(drawGroup);
+    });
+
+    // Draw polyline connecting vertices
+    if (drawingPoints.length > 1) {
+      L.polyline(drawingPoints, {
+        color: "#1b4332",
+        weight: 2.5,
+        dashArray: "4, 4",
+      }).addTo(drawGroup);
+    }
+  }, [drawingPoints]);
+
+  const handleFinishDrawing = () => {
+    if (drawingPoints.length < 3) return;
+
+    // Close polygon
+    const closedCoords = [
+      ...drawingPoints.map((pt) => [pt.lng, pt.lat]),
+      [drawingPoints[0].lng, drawingPoints[0].lat],
+    ];
+
+    const geoJsonPolygon: GeoJsonObject = {
+      type: "Polygon",
+      coordinates: [closedCoords],
+    };
+
+    setDrawingPoints([]);
+    if (onCustomPolygonDrawn) {
+      onCustomPolygonDrawn(geoJsonPolygon);
+    }
+    if (onToggleDrawingMode) {
+      onToggleDrawingMode(false);
+    }
+  };
+
+  const handleCancelDrawing = () => {
+    setDrawingPoints([]);
+    if (onToggleDrawingMode) {
+      onToggleDrawingMode(false);
+    }
+  };
 
   // Switch Basemap
   useEffect(() => {
@@ -117,6 +233,19 @@ export default function MapInner({
     }
   }, [activeBasemap]);
 
+  // Toggle Cadastre WMTS Overlay
+  useEffect(() => {
+    const map = mapInstanceRef.current;
+    const cadastreLayer = cadastreWMTSRef.current;
+    if (!map || !cadastreLayer) return;
+
+    if (showCadastreOverlay) {
+      if (!map.hasLayer(cadastreLayer)) cadastreLayer.addTo(map);
+    } else {
+      if (map.hasLayer(cadastreLayer)) map.removeLayer(cadastreLayer);
+    }
+  }, [showCadastreOverlay]);
+
   // Update view on center change
   useEffect(() => {
     if (mapInstanceRef.current && center) {
@@ -124,7 +253,7 @@ export default function MapInner({
     }
   }, [center, zoom]);
 
-  // Render Cadastral Parcels
+  // Render Cadastral Parcels vector overlays
   useEffect(() => {
     const layerGroup = parcelsLayerGroupRef.current;
     const map = mapInstanceRef.current;
@@ -147,7 +276,7 @@ export default function MapInner({
         color: isSelected ? "#1b4332" : activeBasemap === "ortho" ? "#f59e0b" : "#d97706",
         weight: isSelected ? 3 : 1.5,
         fillColor: isSelected ? "#2d6a4f" : activeBasemap === "ortho" ? "#fbbf24" : "#fef3c7",
-        fillOpacity: isSelected ? 0.4 : 0.15,
+        fillOpacity: isSelected ? 0.45 : 0.15,
         dashArray: isSelected ? undefined : "3, 3",
       };
 
@@ -157,8 +286,11 @@ export default function MapInner({
           const props = (feature.properties || {}) as Record<string, unknown>;
           const label = `Section ${props.section || ""} n°${props.numero || ""} (${props.contenance ? `${props.contenance} m²` : "surface n.d."})`;
           layer.bindTooltip(label, { sticky: true });
-          layer.on("click", () => {
-            onToggleParcel(parcel);
+          layer.on("click", (e) => {
+            if (!isDrawingMode) {
+              L.DomEvent.stopPropagation(e);
+              onToggleParcel(parcel);
+            }
           });
         },
       });
@@ -172,10 +304,10 @@ export default function MapInner({
       });
     });
 
-    if (bounds.isValid() && !empriseGeoJson) {
+    if (bounds.isValid() && !empriseGeoJson && !isDrawingMode) {
       map.fitBounds(bounds, { padding: [40, 40], maxZoom: 18 });
     }
-  }, [parcels, selectedParcelIds, onToggleParcel, empriseGeoJson, showCadastreOverlay, activeBasemap]);
+  }, [parcels, selectedParcelIds, onToggleParcel, empriseGeoJson, showCadastreOverlay, activeBasemap, isDrawingMode]);
 
   // Render Site Emprise & Buffer
   useEffect(() => {
@@ -202,7 +334,7 @@ export default function MapInner({
     }).addTo(empriseGroup);
 
     const bounds = empriseLayer.getBounds();
-    if (bounds.isValid()) {
+    if (bounds.isValid() && !isDrawingMode) {
       map.fitBounds(bounds, { padding: [50, 50], maxZoom: 18 });
 
       // Investigation buffer
@@ -220,7 +352,7 @@ export default function MapInner({
           .addTo(bufferGroup);
       }
     }
-  }, [empriseGeoJson, bufferMeters]);
+  }, [empriseGeoJson, bufferMeters, isDrawingMode]);
 
   // Render Markers (CASIAS, ICPE, BSS, Piezomètres)
   useEffect(() => {
@@ -283,7 +415,7 @@ export default function MapInner({
       }
     });
 
-    // 3. Forages BSS BRGM (Vert émeraude si coupe lithologique présente, Bleu sinon)
+    // 3. Forages BSS BRGM
     bssBoreholes.forEach((b) => {
       if (b.latitude && b.longitude) {
         const hasCoupe = b.coupe_disponible;
@@ -306,7 +438,7 @@ export default function MapInner({
             <div class="text-slate-600 my-1">
               <b>Nature :</b> ${b.nature || "FORAGE"}<br/>
               <b>Profondeur :</b> ${b.prof_atteinte !== undefined && b.prof_atteinte !== null ? `${b.prof_atteinte} m` : "n.d."}<br/>
-              <b>Distance à l'emprise :</b> ${Math.round(b.distance_meters)} m
+              <b>Distance :</b> ${Math.round(b.distance_meters)} m
             </div>
             <a href="${b.url_infoterre}" target="_blank" rel="noopener noreferrer" class="mt-2 inline-block text-[11px] font-semibold text-emerald-700 hover:text-emerald-900 underline">
               Consulter la fiche InfoTerre &rarr;
@@ -317,7 +449,7 @@ export default function MapInner({
       }
     });
 
-    // 4. Piézomètres Hub'Eau (Cyan)
+    // 4. Piézomètres Hub'Eau
     piezometres.forEach((pz) => {
       if (pz.latitude && pz.longitude) {
         const marker = L.circleMarker([pz.latitude, pz.longitude], {
@@ -329,7 +461,7 @@ export default function MapInner({
           fillOpacity: 0.9,
         });
 
-        const profStr = pz.profondeur_nappe !== undefined && pz.profondeur_nappe !== null ? `${pz.profondeur_nappe} m sous le sol` : "non mesurée";
+        const profStr = pz.profondeur_nappe !== undefined && pz.profondeur_nappe !== null ? `${pz.profondeur_nappe} m sous sol` : "non mesurée";
         const coteStr = pz.cote_ngf !== undefined && pz.cote_ngf !== null ? `${pz.cote_ngf} m NGF` : "non renseignée";
 
         const content = `
@@ -351,8 +483,54 @@ export default function MapInner({
   }, [casiasSites, icpeSites, bssBoreholes, piezometres]);
 
   return (
-    <div className="relative w-full h-full min-h-[400px]">
+    <div className={`relative w-full h-full min-h-[400px] ${isDrawingMode ? "cursor-crosshair" : ""}`}>
       <div ref={mapContainerRef} className="w-full h-full" />
+
+      {/* Top Floating Bar: Drawing Mode Actions OR Basemap Switcher */}
+      {isDrawingMode ? (
+        <div className="absolute top-4 left-1/2 -translate-x-1/2 z-1000 bg-white/95 backdrop-blur-xs px-4 py-2.5 rounded-lg shadow-lg border border-[#1b4332] text-xs font-sans flex items-center gap-3">
+          <div className="flex items-center gap-2 text-slate-800 font-semibold">
+            <PenTool className="h-4 w-4 text-[#1b4332] animate-pulse" />
+            <span>Mode Tracé libre : {drawingPoints.length} point(s) posé(s)</span>
+          </div>
+
+          <div className="h-4 w-px bg-slate-200" />
+
+          <button
+            type="button"
+            disabled={drawingPoints.length < 3}
+            onClick={handleFinishDrawing}
+            className="py-1 px-3 rounded bg-[#1b4332] text-white hover:bg-[#2d6a4f] disabled:opacity-40 disabled:cursor-not-allowed font-medium flex items-center gap-1.5 transition-colors cursor-pointer"
+          >
+            <Check className="h-3.5 w-3.5" />
+            Fermer le polygone
+          </button>
+
+          <button
+            type="button"
+            onClick={handleCancelDrawing}
+            className="py-1 px-2.5 rounded bg-slate-100 text-slate-600 hover:bg-slate-200 font-medium flex items-center gap-1 transition-colors cursor-pointer"
+          >
+            <Undo2 className="h-3.5 w-3.5" />
+            Annuler
+          </button>
+        </div>
+      ) : (
+        <div className="absolute top-4 left-4 z-1000 bg-white/95 backdrop-blur-xs p-1 rounded-md shadow-md border border-slate-200 text-xs font-sans flex items-center gap-1">
+          <button
+            type="button"
+            onClick={() => onToggleDrawingMode && onToggleDrawingMode(true)}
+            className="px-2.5 py-1.5 rounded text-xs font-semibold bg-[#1b4332] text-white hover:bg-[#2d6a4f] flex items-center gap-1.5 shadow-2xs transition-colors cursor-pointer"
+            title="Tracer une emprise libre (polygone personnalisé)"
+          >
+            <PenTool className="h-3.5 w-3.5" />
+            Tracer un polygone
+          </button>
+          <span className="text-[11px] text-slate-500 px-2 flex items-center gap-1">
+            <MousePointer className="h-3 w-3" /> Clic sur carte pour cadastre
+          </span>
+        </div>
+      )}
 
       {/* Floating Basemap & Overlay Switcher */}
       <div className="absolute top-4 right-4 z-1000 bg-white/95 backdrop-blur-xs p-2 rounded-lg shadow-md border border-slate-200 text-xs font-sans space-y-2">
@@ -388,7 +566,7 @@ export default function MapInner({
             onChange={(e) => setShowCadastreOverlay(e.target.checked)}
             className="rounded border-slate-300 text-[#1b4332] focus:ring-[#1b4332]"
           />
-          Surcouche Cadastre
+          Surcouche Cadastre (IGN)
         </label>
       </div>
     </div>

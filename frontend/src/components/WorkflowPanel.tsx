@@ -12,6 +12,7 @@ import {
   Loader2,
   Trash2,
   RefreshCw,
+  PenTool,
 } from "lucide-react";
 import {
   AddressResultItem,
@@ -40,6 +41,9 @@ interface WorkflowPanelProps {
   onStudyUpdated: (study: StudyRecord | null) => void;
   bufferMeters: number;
   onBufferChange: (buffer: number) => void;
+  isDrawingMode?: boolean;
+  onToggleDrawingMode?: (active: boolean) => void;
+  externalSelectedAddress?: AddressResultItem | null;
 }
 
 export default function WorkflowPanel({
@@ -54,6 +58,9 @@ export default function WorkflowPanel({
   onStudyUpdated,
   bufferMeters,
   onBufferChange,
+  isDrawingMode = false,
+  onToggleDrawingMode,
+  externalSelectedAddress,
 }: WorkflowPanelProps) {
   // Search state
   const [addressQuery, setAddressQuery] = useState("");
@@ -123,6 +130,17 @@ export default function WorkflowPanel({
     }
   };
 
+  // Sync with external selected address (from map click)
+  useEffect(() => {
+    if (externalSelectedAddress) {
+      setSelectedAddress(externalSelectedAddress);
+      setAddressQuery(externalSelectedAddress.label);
+      if (!studyTitle) {
+        setStudyTitle(`Diagnostic - ${externalSelectedAddress.city || externalSelectedAddress.label}`);
+      }
+    }
+  }, [externalSelectedAddress]);
+
   const getParcelKey = (p: CadastralParcelFeature) =>
     p.properties.idu || p.id || `${p.properties.section}-${p.properties.numero}`;
 
@@ -144,14 +162,18 @@ export default function WorkflowPanel({
     }
   };
 
-  // Create study and launch Georisques collection
+  // Create study and launch multi-source collection
   const handleCreateAndCollect = async () => {
     if (!empriseResult || !selectedAddress) return;
 
     setIsCreatingStudy(true);
     setErrorMsg(null);
     try {
-      const selectedList = parcels.filter((p) => selectedParcelIds.has(getParcelKey(p)));
+      const isCustom = Boolean(empriseResult.properties?.custom_drawing);
+      const selectedList = isCustom
+        ? []
+        : parcels.filter((p) => selectedParcelIds.has(getParcelKey(p)));
+
       const created = await createStudy({
         name: studyTitle || `Étude SSP - ${selectedAddress.label}`,
         address: selectedAddress.label,
@@ -301,90 +323,131 @@ export default function WorkflowPanel({
           </div>
         </section>
 
-        {/* Step 2: Cadastral Parcels Selection */}
-        {selectedAddress && (
+        {/* Step 2: Cadastral Parcels or Freehand Drawing Selection */}
+        {(selectedAddress || empriseResult) && (
           <section className="space-y-3 pt-3 border-t border-slate-200">
             <div className="flex items-center justify-between">
               <span className="text-xs font-bold uppercase tracking-wider text-slate-700">
-                2. Emprise foncière cadastrale
+                2. Définition de l&apos;emprise du site
               </span>
               <span className="text-xs text-slate-500 font-mono">
-                {parcels.length} parcelle(s)
+                {empriseResult?.properties?.custom_drawing ? "Tracé libre" : `${parcels.length} parcelle(s)`}
               </span>
             </div>
 
-            {isLoadingCadastre ? (
-              <div className="flex items-center gap-2 text-xs text-slate-500 p-3 bg-white border border-slate-200 rounded-md">
-                <Loader2 className="h-4 w-4 animate-spin text-[#1b4332]" />
-                Interrogation du Cadastre IGN en cours...
-              </div>
-            ) : parcels.length > 0 ? (
-              <div className="space-y-2">
-                <p className="text-xs text-slate-600">
-                  Sélectionnez les parcelles constitutives du site d&apos;étude sur la carte ou ci-dessous :
-                </p>
+            {/* Drawing mode toggle button */}
+            <button
+              type="button"
+              onClick={() => onToggleDrawingMode && onToggleDrawingMode(!isDrawingMode)}
+              className={`w-full py-2 px-3 rounded text-xs font-semibold border flex items-center justify-center gap-2 transition-colors cursor-pointer ${
+                isDrawingMode
+                  ? "bg-amber-100 border-amber-400 text-amber-900 shadow-xs"
+                  : "bg-white border-slate-300 text-slate-700 hover:bg-slate-50 hover:border-slate-400"
+              }`}
+            >
+              <PenTool className="h-3.5 w-3.5 text-[#1b4332]" />
+              {isDrawingMode ? "Mode dessin actif — Cliquez sur la carte" : "Tracer un polygone libre sur la carte"}
+            </button>
 
-                <div className="max-h-36 overflow-y-auto space-y-1 pr-1">
-                  {parcels.map((parcel) => {
-                    const parcelKey = parcel.properties.idu || parcel.id || `${parcel.properties.section}-${parcel.properties.numero}`;
-                    const isSelected = selectedParcelIds.has(parcelKey);
-                    return (
-                      <div
-                        key={parcelKey}
-                        onClick={() => onToggleParcel(parcel)}
-                        className={`p-2 rounded border text-xs cursor-pointer flex items-center justify-between transition-colors ${
-                          isSelected
-                            ? "bg-[#d8f3dc] border-[#2d6a4f] text-[#143323]"
-                            : "bg-white border-slate-200 hover:border-slate-300 text-slate-800"
-                        }`}
-                      >
-                        <div className="font-mono">
-                          Section <b>{parcel.properties.section || "—"}</b> n°
-                          <b>{parcel.properties.numero || "—"}</b>
-                        </div>
-                        <div className="text-slate-600 tabular-nums font-mono text-[11px]">
-                          {parcel.properties.contenance
-                            ? `${parcel.properties.contenance} m²`
-                            : "n.d."}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-
-                <button
-                  disabled={selectedParcelIds.size === 0 || isUnitingParcels}
-                  onClick={handleComputeUnion}
-                  className="w-full py-2 px-3 text-xs font-semibold rounded bg-[#1b4332] text-white hover:bg-[#2d6a4f] disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 transition-colors cursor-pointer"
-                >
-                  {isUnitingParcels ? (
-                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                  ) : (
-                    <Layers className="h-3.5 w-3.5" />
-                  )}
-                  Valider l&apos;emprise ({selectedParcelIds.size} sélectionnée(s))
-                </button>
-              </div>
-            ) : (
-              <div className="p-3 bg-slate-100 rounded text-xs text-slate-600">
-                Aucune parcelle cadastrale trouvée pour ces coordonnées.
-              </div>
-            )}
-
-            {/* Validated Emprise Info */}
-            {empriseResult && (
-              <div className="p-3 bg-white border border-[#2d6a4f] rounded-md shadow-xs space-y-1">
+            {/* Custom Freehand Drawing Result */}
+            {empriseResult?.properties?.custom_drawing ? (
+              <div className="p-3 bg-white border border-[#2d6a4f] rounded-md shadow-xs space-y-1.5">
                 <div className="flex items-center justify-between text-xs">
-                  <span className="font-bold text-[#143323]">Emprise unifiée calculée</span>
+                  <span className="font-bold text-[#143323] flex items-center gap-1.5">
+                    <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" /> Emprise libre validée
+                  </span>
                   <span className="text-[11px] font-mono text-slate-500">Lambert 93</span>
                 </div>
-                <div className="text-sm font-bold text-slate-900 tabular-nums">
+                <div className="text-base font-bold text-slate-900 tabular-nums">
                   {Math.round(empriseResult.properties?.calculated_area_m2 || 0).toLocaleString("fr-FR")} m²
                 </div>
                 <div className="text-[11px] text-slate-600">
-                  Union géométrique exacte de {empriseResult.properties?.parcels_count || empriseResult.properties?.parcel_ids?.length || 1} parcelle(s).
+                  Polygone sur-mesure délimité par l&apos;ingénieur environnemental.
                 </div>
+                <button
+                  type="button"
+                  onClick={() => onToggleDrawingMode && onToggleDrawingMode(true)}
+                  className="text-[11px] text-[#1b4332] hover:text-[#2d6a4f] font-semibold underline pt-1 cursor-pointer"
+                >
+                  Redessiner un polygone
+                </button>
               </div>
+            ) : (
+              <>
+                {isLoadingCadastre ? (
+                  <div className="flex items-center gap-2 text-xs text-slate-500 p-3 bg-white border border-slate-200 rounded-md">
+                    <Loader2 className="h-4 w-4 animate-spin text-[#1b4332]" />
+                    Interrogation du Cadastre IGN en cours...
+                  </div>
+                ) : parcels.length > 0 ? (
+                  <div className="space-y-2">
+                    <p className="text-xs text-slate-600">
+                      Sélectionnez les parcelles sur la carte ou dans la liste :
+                    </p>
+
+                    <div className="max-h-36 overflow-y-auto space-y-1 pr-1">
+                      {parcels.map((parcel) => {
+                        const parcelKey = parcel.properties.idu || parcel.id || `${parcel.properties.section}-${parcel.properties.numero}`;
+                        const isSelected = selectedParcelIds.has(parcelKey);
+                        return (
+                          <div
+                            key={parcelKey}
+                            onClick={() => onToggleParcel(parcel)}
+                            className={`p-2 rounded border text-xs cursor-pointer flex items-center justify-between transition-colors ${
+                              isSelected
+                                ? "bg-[#d8f3dc] border-[#2d6a4f] text-[#143323]"
+                                : "bg-white border-slate-200 hover:border-slate-300 text-slate-800"
+                            }`}
+                          >
+                            <div className="font-mono">
+                              Section <b>{parcel.properties.section || "—"}</b> n°
+                              <b>{parcel.properties.numero || "—"}</b>
+                            </div>
+                            <div className="text-slate-600 tabular-nums font-mono text-[11px]">
+                              {parcel.properties.contenance
+                                ? `${parcel.properties.contenance} m²`
+                                : "n.d."}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+
+                    <button
+                      disabled={selectedParcelIds.size === 0 || isUnitingParcels}
+                      onClick={handleComputeUnion}
+                      className="w-full py-2 px-3 text-xs font-semibold rounded bg-[#1b4332] text-white hover:bg-[#2d6a4f] disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 transition-colors cursor-pointer"
+                    >
+                      {isUnitingParcels ? (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      ) : (
+                        <Layers className="h-3.5 w-3.5" />
+                      )}
+                      Valider l&apos;emprise ({selectedParcelIds.size} sélectionnée(s))
+                    </button>
+                  </div>
+                ) : (
+                  <div className="p-3 bg-slate-100 rounded text-xs text-slate-600">
+                    Cliquez directement sur une parcelle sur la carte pour l&apos;ajouter au dossier.
+                  </div>
+                )}
+
+                {/* Validated Emprise Info */}
+                {empriseResult && !empriseResult.properties?.custom_drawing && (
+                  <div className="p-3 bg-white border border-[#2d6a4f] rounded-md shadow-xs space-y-1">
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="font-bold text-[#143323]">Emprise unifiée calculée</span>
+                      <span className="text-[11px] font-mono text-slate-500">Lambert 93</span>
+                    </div>
+                    <div className="text-sm font-bold text-slate-900 tabular-nums">
+                      {Math.round(empriseResult.properties?.calculated_area_m2 || 0).toLocaleString("fr-FR")} m²
+                    </div>
+                    <div className="text-[11px] text-slate-600">
+                      Union géométrique exacte de {empriseResult.properties?.parcels_count || empriseResult.properties?.parcel_ids?.length || 1} parcelle(s).
+                    </div>
+                  </div>
+                )}
+              </>
             )}
           </section>
         )}
