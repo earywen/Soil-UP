@@ -46,16 +46,12 @@ export default function MapInner({
       zoomControl: false,
     });
 
-    // Elegant, clean, high-contrast CartoDB Positron base tiles
-    L.tileLayer(
-      "https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png",
-      {
-        attribution:
-          '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
-        subdomains: "abcd",
-        maxZoom: 20,
-      }
-    ).addTo(map);
+    // Clean, high-contrast, free OpenStreetMap tiles (no API key required)
+    L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      attribution:
+        '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+      maxZoom: 19,
+    }).addTo(map);
 
     // Zoom control at bottom right to avoid cluttering header
     L.control.zoom({ position: "bottomright" }).addTo(map);
@@ -95,7 +91,11 @@ export default function MapInner({
     const bounds = L.latLngBounds([]);
 
     parcels.forEach((parcel) => {
-      const isSelected = selectedParcelIds.has(parcel.properties.id);
+      const parcelKey =
+        parcel.properties.idu ||
+        parcel.id ||
+        `${parcel.properties.section}-${parcel.properties.numero}`;
+      const isSelected = selectedParcelIds.has(parcelKey);
 
       const style: L.PathOptions = {
         color: isSelected ? "#1b4332" : "#d97706",

@@ -20,17 +20,21 @@ export interface GeoJsonObject {
   [key: string]: unknown;
 }
 
+export interface CadastralParcelProperties {
+  idu?: string;
+  section?: string;
+  numero?: string;
+  contenance?: number; // surface déclarée en m²
+  nom_com?: string;
+  code_insee?: string;
+  [key: string]: unknown;
+}
+
 export interface CadastralParcelFeature {
   type: "Feature";
+  id?: string;
   geometry: GeoJsonObject;
-  properties: {
-    id: string;
-    commune?: string;
-    section?: string;
-    numero?: string;
-    contenance?: number; // surface déclarée en m²
-    [key: string]: unknown;
-  };
+  properties: CadastralParcelProperties;
 }
 
 export interface CadastralParcelCollection {
@@ -38,10 +42,18 @@ export interface CadastralParcelCollection {
   features: CadastralParcelFeature[];
 }
 
+export interface SiteEmpriseProperties {
+  parcel_ids?: string[];
+  parcels_count?: number;
+  contenance_cadastrale_totale?: number;
+  calculated_area_m2?: number;
+  [key: string]: unknown;
+}
+
 export interface SiteEmpriseResult {
+  type: "Feature";
   geometry: GeoJsonObject;
-  area_m2: number;
-  parcel_count: number;
+  properties: SiteEmpriseProperties;
 }
 
 export interface CasiasItem {

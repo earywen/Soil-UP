@@ -34,23 +34,27 @@ export default function Home() {
     setStudy(null);
   };
 
+  const getParcelKey = (p: CadastralParcelFeature) =>
+    p.properties.idu || p.id || `${p.properties.section}-${p.properties.numero}`;
+
   const handleParcelsLoaded = (loadedParcels: CadastralParcelFeature[]) => {
     setParcels(loadedParcels);
     // Pre-select the first parcel nearest to coordinate
     if (loadedParcels.length > 0) {
-      setSelectedParcelIds(new Set([loadedParcels[0].properties.id]));
+      setSelectedParcelIds(new Set([getParcelKey(loadedParcels[0])]));
     } else {
       setSelectedParcelIds(new Set());
     }
   };
 
   const handleToggleParcel = (parcel: CadastralParcelFeature) => {
+    const key = getParcelKey(parcel);
     setSelectedParcelIds((prev) => {
       const next = new Set(prev);
-      if (next.has(parcel.properties.id)) {
-        next.delete(parcel.properties.id);
+      if (next.has(key)) {
+        next.delete(key);
       } else {
-        next.add(parcel.properties.id);
+        next.add(key);
       }
       return next;
     });

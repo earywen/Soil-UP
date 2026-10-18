@@ -123,9 +123,12 @@ export default function WorkflowPanel({
     }
   };
 
+  const getParcelKey = (p: CadastralParcelFeature) =>
+    p.properties.idu || p.id || `${p.properties.section}-${p.properties.numero}`;
+
   // Compute union of selected parcels
   const handleComputeUnion = async () => {
-    const selectedList = parcels.filter((p) => selectedParcelIds.has(p.properties.id));
+    const selectedList = parcels.filter((p) => selectedParcelIds.has(getParcelKey(p)));
     if (selectedList.length === 0) return;
 
     setIsUnitingParcels(true);
@@ -148,7 +151,7 @@ export default function WorkflowPanel({
     setIsCreatingStudy(true);
     setErrorMsg(null);
     try {
-      const selectedList = parcels.filter((p) => selectedParcelIds.has(p.properties.id));
+      const selectedList = parcels.filter((p) => selectedParcelIds.has(getParcelKey(p)));
       const created = await createStudy({
         name: studyTitle || `Étude SSP - ${selectedAddress.label}`,
         address: selectedAddress.label,
@@ -318,10 +321,11 @@ export default function WorkflowPanel({
 
                 <div className="max-h-36 overflow-y-auto space-y-1 pr-1">
                   {parcels.map((parcel) => {
-                    const isSelected = selectedParcelIds.has(parcel.properties.id);
+                    const parcelKey = parcel.properties.idu || parcel.id || `${parcel.properties.section}-${parcel.properties.numero}`;
+                    const isSelected = selectedParcelIds.has(parcelKey);
                     return (
                       <div
-                        key={parcel.properties.id}
+                        key={parcelKey}
                         onClick={() => onToggleParcel(parcel)}
                         className={`p-2 rounded border text-xs cursor-pointer flex items-center justify-between transition-colors ${
                           isSelected
@@ -370,10 +374,10 @@ export default function WorkflowPanel({
                   <span className="text-[11px] font-mono text-slate-500">Lambert 93</span>
                 </div>
                 <div className="text-sm font-bold text-slate-900 tabular-nums">
-                  {Math.round(empriseResult.area_m2).toLocaleString("fr-FR")} m²
+                  {Math.round(empriseResult.properties?.calculated_area_m2 || 0).toLocaleString("fr-FR")} m²
                 </div>
                 <div className="text-[11px] text-slate-600">
-                  Union géométrique exacte de {empriseResult.parcel_count} parcelle(s).
+                  Union géométrique exacte de {empriseResult.properties?.parcels_count || empriseResult.properties?.parcel_ids?.length || 1} parcelle(s).
                 </div>
               </div>
             )}

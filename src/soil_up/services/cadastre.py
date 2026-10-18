@@ -28,11 +28,29 @@ class IgnCadastreService:
         self.timeout = timeout
 
     async def get_parcels_by_coordinates(self, lat: float, lon: float) -> CadastralParcelCollection:
-        geom_param = json.dumps({"type": "Point", "coordinates": [lon, lat]})
+        geom_point = json.dumps({"type": "Point", "coordinates": [lon, lat]})
         async with httpx.AsyncClient(timeout=self.timeout) as client:
-            response = await client.get(self.base_url, params={"geom": geom_param})
+            response = await client.get(self.base_url, params={"geom": geom_point})
             response.raise_for_status()
             data = response.json()
+
+            # Fallback: if the coordinate falls onto the public road (0 parcels returned),
+            # query with a 30m proximity box to retrieve the adjacent parcel candidates.
+            if not data.get("features"):
+                delta = 0.00035
+                geom_box = {
+                    "type": "Polygon",
+                    "coordinates": [[
+                        [lon - delta, lat - delta],
+                        [lon + delta, lat - delta],
+                        [lon + delta, lat + delta],
+                        [lon - delta, lat + delta],
+                        [lon - delta, lat - delta],
+                    ]]
+                }
+                fallback_res = await client.get(self.base_url, params={"geom": json.dumps(geom_box)})
+                if fallback_res.is_success:
+                    data = fallback_res.json()
 
         features: List[CadastralParcelFeature] = []
         for feat in data.get("features", []):
