@@ -1,3 +1,4 @@
+import asyncio
 from typing import List
 from fastapi import APIRouter, Depends, HTTPException, status, Response
 from sqlalchemy.orm import Session
@@ -11,10 +12,18 @@ from soil_up.schemas.study import (
     StudyListItemResponse,
 )
 from soil_up.services.georisques import GeorisquesConnector
+from soil_up.services.ign_alti import IgnAltiConnector
+from soil_up.services.bss import BssConnector
+from soil_up.services.hubeau_piezo import HubeauPiezometrieConnector
+from soil_up.services.inpn import InpnConnector
 from soil_up.services.report import ReportGeneratorService
 
 router = APIRouter(prefix="/api/studies", tags=["Studies"])
 georisques_connector = GeorisquesConnector()
+ign_alti_connector = IgnAltiConnector()
+bss_connector = BssConnector()
+hubeau_piezo_connector = HubeauPiezometrieConnector()
+inpn_connector = InpnConnector()
 report_service = ReportGeneratorService()
 
 @router.post("", response_model=StudyResponse, status_code=status.HTTP_201_CREATED)
@@ -78,13 +87,71 @@ async def collect_study_data(study_id: int, db: Session = Depends(get_db)):
     db.commit()
 
     try:
-        res = await georisques_connector.collect(
-            emprise_geojson=record.emprise,
-            buffer_meters=record.buffer_meters,
-        )
+        tasks = [
+            georisques_connector.collect(record.emprise, record.buffer_meters),
+            ign_alti_connector.collect(record.emprise, record.buffer_meters),
+            bss_connector.collect(record.emprise, record.buffer_meters),
+            hubeau_piezo_connector.collect(record.emprise, record.buffer_meters),
+            inpn_connector.collect(record.emprise, record.buffer_meters),
+        ]
+        results = await asyncio.gather(*tasks, return_exceptions=True)
 
-        record.status = "partial_error" if res.errors else "completed"
-        record.collected_data = res.model_dump()
+        geo_res, alti_res, bss_res, piezo_res, inpn_res = results
+
+        collected_data = {
+            "casias": [],
+            "icpe": [],
+            "altimetrie": None,
+            "bss": [],
+            "piezometrie": [],
+            "zonages_naturels": [],
+            "errors": {},
+        }
+
+        # 1. Georisques
+        if isinstance(geo_res, Exception):
+            collected_data["errors"]["georisques"] = str(geo_res)
+        elif geo_res:
+            collected_data["casias"] = [item.model_dump() for item in geo_res.casias]
+            collected_data["icpe"] = [item.model_dump() for item in geo_res.icpe]
+            if geo_res.errors:
+                collected_data["errors"].update(geo_res.errors)
+
+        # 2. Altimétrie
+        if isinstance(alti_res, Exception):
+            collected_data["errors"]["altimetrie"] = str(alti_res)
+        elif alti_res:
+            collected_data["altimetrie"] = alti_res.model_dump()
+            if alti_res.error:
+                collected_data["errors"]["altimetrie"] = alti_res.error
+
+        # 3. BSS
+        if isinstance(bss_res, Exception):
+            collected_data["errors"]["bss"] = str(bss_res)
+        elif bss_res:
+            collected_data["bss"] = [item.model_dump() for item in bss_res.boreholes]
+            if bss_res.error:
+                collected_data["errors"]["bss"] = bss_res.error
+
+        # 4. Piézométrie
+        if isinstance(piezo_res, Exception):
+            collected_data["errors"]["piezometrie"] = str(piezo_res)
+        elif piezo_res:
+            collected_data["piezometrie"] = [item.model_dump() for item in piezo_res.stations]
+            if piezo_res.error:
+                collected_data["errors"]["piezometrie"] = piezo_res.error
+
+        # 5. INPN
+        if isinstance(inpn_res, Exception):
+            collected_data["errors"]["inpn"] = str(inpn_res)
+        elif inpn_res:
+            collected_data["zonages_naturels"] = [item.model_dump() for item in inpn_res.zonages]
+            if inpn_res.error:
+                collected_data["errors"]["inpn"] = inpn_res.error
+
+        has_errors = bool(collected_data["errors"])
+        record.status = "partial_error" if has_errors else "completed"
+        record.collected_data = collected_data
         db.commit()
         db.refresh(record)
         return record

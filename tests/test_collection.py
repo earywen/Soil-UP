@@ -53,6 +53,22 @@ async def test_collect_georisques_data_for_study():
     respx.get("https://www.georisques.gouv.fr/api/v1/installations_classees").mock(
         return_value=httpx.Response(200, json=SAMPLE_ICPE_RESPONSE)
     )
+    # Mock IGN Alti
+    respx.get("https://data.geopf.fr/altimetrie/1.0/calcul/alti/rest/elevation.json").mock(
+        return_value=httpx.Response(200, json={"elevations": [{"lon": 2.33, "lat": 48.87, "z": 38.5, "acc": "RGE ALTI"}]})
+    )
+    # Mock BRGM BSS
+    respx.get("http://geoservices.brgm.fr/geologie").mock(
+        return_value=httpx.Response(200, json={"type": "FeatureCollection", "features": []})
+    )
+    # Mock Hub'Eau
+    respx.get("https://hubeau.eaufrance.fr/api/v1/niveaux_nappes/stations").mock(
+        return_value=httpx.Response(200, json={"data": []})
+    )
+    # Mock INPN WFS
+    respx.get("https://data.geopf.fr/wfs/ows").mock(
+        return_value=httpx.Response(200, json={"type": "FeatureCollection", "features": []})
+    )
 
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         # 1. Create a study
@@ -91,6 +107,13 @@ async def test_collect_georisques_data_for_study():
         assert icpe["code_aiot"] == "0007407767"
         assert icpe["raison_sociale"] == "Centrale Thermique Vendôme"
         assert "distance_meters" in icpe
+
+        # Verify Jalon 2 datasets
+        assert "altimetrie" in cdata
+        assert cdata["altimetrie"]["z_mean"] == 38.5
+        assert "bss" in cdata
+        assert "piezometrie" in cdata
+        assert "zonages_naturels" in cdata
 
 @pytest.mark.asyncio
 @respx.mock

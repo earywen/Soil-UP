@@ -1,6 +1,6 @@
 # Soil'UP — Diagnostic Foncier & Historique Automatisé
 
-[![Backend Tests](https://img.shields.io/badge/pytest-16%20passed-brightgreen)](#tests)
+[![Backend Tests](https://img.shields.io/badge/pytest-25%20passed-brightgreen)](#tests)
 [![Frontend E2E](https://img.shields.io/badge/playwright-E2E%20passed-brightgreen)](#tests)
 [![Norme](https://img.shields.io/badge/Norme-NF%20X%2031--620%20(A100)-blue)](#contexte)
 [![Design](https://img.shields.io/badge/Impeccable-Operate%20Mode-emerald)](#design)
@@ -12,13 +12,19 @@
 ## Fonctionnalités
 
 1. **Recherche en langage naturel** : Géocodage textuel instantané via l'API Base Adresse Nationale (BAN).
-2. **SIG interactif & Cadastre IGN** : Affichage vectoriel des parcelles avec sélection au clic et calcul géométrique exact de l'emprise fusionnée en projection métrique officielle **Lambert 93** (`EPSG:2154`).
+2. **SIG interactif Multi-couches & Cadastre IGN** :
+   - Bascule fluide entre les fonds de plan **OpenStreetMap** et **Orthophoto Aérienne IGN HD** (flux Géoplateforme WMTS).
+   - Surcouche cadastrale transparente commutable.
+   - Sélection au clic et calcul géométrique exact de l'emprise fusionnée en projection métrique officielle **Lambert 93** (`EPSG:2154`).
 3. **Périmètres d'investigation métriques** : Buffers concentriques configurables (50 m, 100 m, 200 m, 500 m).
-4. **Collecte asynchrone Géorisques** : Interrogation concurrente et résiliente des bases de données de l'État :
-   - **CASIAS / BASIAS** (Inventaire historique des activités industrielles et activités de services).
+4. **Collecte asynchrone multi-sources (5 connecteurs officiels)** :
+   - **CASIAS / BASIAS** (Inventaire historique des activités industrielles et de services).
    - **ICPE** (Installations Classées pour la Protection de l'Environnement).
-   - Calcul des distances métriques exactes de chaque site à l'emprise.
-5. **Génération d'un rapport Word (.docx) clé en main** : Document structuré et stylé à partir du gabarit `template.docx`, prêt pour inclusion dans l'offre commerciale ou le rapport d'étude.
+   - **BRGM BSS** (Banque du Sous-Sol : forages, profondeurs atteintes, présence de coupes lithologiques et liens directs InfoTerre).
+   - **Hub'Eau Piézométrie** (Niveaux de nappes phréatiques, profondeur d'eau sous le sol et cotes piézométriques NGF).
+   - **IGN Altimétrie MNT** (Altitude moyenne du site, min, max et relief général RGE ALTI).
+   - **INPN / PatriNat Biodiversité** (Sensibilité écologique : ZNIEFF 1, ZNIEFF 2, Natura 2000 ZSC Habitats et ZPS Oiseaux avec distances métriques).
+5. **Génération d'un rapport Word (.docx) enrichi clé en main** : Document structuré et stylé à partir du gabarit `template.docx`, intégrant les chapitres d'assiette cadastrale, d'historique industriel, de géologie/hydrogéologie et de sensibilité écologique.
 
 ---
 

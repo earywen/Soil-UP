@@ -1,7 +1,7 @@
 import { chromium } from "playwright";
 
 async function run() {
-  console.log("Démarrage du test browser E2E sur http://192.168.1.75:3001...");
+  console.log("Démarrage du test browser E2E Jalon 2 sur http://192.168.1.75:3001...");
   const browser = await chromium.launch({
     headless: true,
     executablePath: "/usr/bin/google-chrome",
@@ -33,7 +33,17 @@ async function run() {
     await page.waitForSelector(".leaflet-container", { timeout: 10000 });
     console.log("Carte Leaflet trouvée dans le DOM !");
 
-    // Étape 1 : Taper l'adresse utilisateur dans le champ de recherche BAN
+    // Tester le basemap switcher : cliquer sur "Photo IGN HD"
+    const photoBtn = page.locator('button:has-text("Photo IGN HD")');
+    await photoBtn.click();
+    console.log("Basculé sur le fond Orthophoto Aérienne IGN HD !");
+
+    // Revenir sur "Plan OSM"
+    const osmBtn = page.locator('button:has-text("Plan OSM")');
+    await osmBtn.click();
+    console.log("Basculé sur le fond Plan OpenStreetMap !");
+
+    // Étape 1 : Saisir une adresse réelle (Rouen)
     const searchInput = page.locator('input[placeholder*="Ex: 14 rue de l\'Industrie"]');
     await searchInput.fill("6 Rue Stanislas Girardin 76000 Rouen");
     console.log("Saisie de l'adresse effectuée...");
@@ -60,31 +70,38 @@ async function run() {
     await page.waitForSelector("text=Emprise unifiée calculée", { timeout: 10000 });
     console.log("Emprise unifiée calculée affichée !");
 
-    // Sélectionner le buffer 500 m comme l'utilisateur
+    // Sélectionner le buffer 500 m
     const buffer500Btn = page.locator('button:has-text("500 m")');
     await buffer500Btn.click();
     console.log("Buffer 500m sélectionné.");
 
-    // Étape 3 : Cliquer sur "Créer le dossier & Interroger Géorisques"
-    const collectButton = page.locator('button:has-text("Interroger Géorisques")');
+    // Étape 3 : Déclencher la collecte multi-sources
+    const collectButton = page.locator('button:has-text("Interroger les 5 sources")');
     await collectButton.click();
-    console.log("Collecte Géorisques lancée...");
+    console.log("Collecte multi-sources lancée (Géorisques, IGN Alti, BSS, Hub'Eau, INPN)...");
 
-    // Attendre la fin de la collecte (synthèse affichée)
-    await page.waitForSelector("text=CASIAS / BASIAS", { timeout: 15000 });
-    console.log("Collecte Géorisques terminée avec succès !");
+    // Attendre la fin de la collecte (synthèse complète affichée)
+    await page.waitForSelector("text=Synthèse Documentaire Complète", { timeout: 20000 });
+    console.log("Synthèse multi-sources affichée !");
 
-    // Attendre que le bouton de téléchargement Word soit visible
-    await page.waitForSelector('text=Télécharger le rapport Word', { timeout: 5000 });
-    console.log("Bouton de téléchargement du rapport Word présent !");
+    // Vérifier la présence des métriques clés du Jalon 2
+    await page.waitForSelector("text=Forages BSS (BRGM)", { timeout: 5000 });
+    await page.waitForSelector("text=Piézométrie & Nappe", { timeout: 5000 });
+    await page.waitForSelector("text=Topographie & Sous-sol", { timeout: 5000 });
+    console.log("Sections Géologie, Piézométrie et Topographie confirmées !");
 
-    await page.screenshot({ path: "screenshot-complete.png" });
-    console.log("Capture d'écran finale enregistrée : screenshot-complete.png");
+    // Vérifier la présence du bouton de téléchargement Word enrichi
+    await page.waitForSelector('text=Télécharger le rapport Word enrichi', { timeout: 5000 });
+    console.log("Bouton de téléchargement du rapport Word enrichi présent !");
 
-    console.log("\n=== TEST E2E BROWSER TOTALEMENT RÉUSSI ! ===");
+    await page.screenshot({ path: "screenshot-jalon2.png" });
+    console.log("Capture d'écran Jalon 2 enregistrée : screenshot-jalon2.png");
+
+    console.log("\n=== TEST E2E BROWSER JALON 2 ENTIÈREMENT VALIDÉ EN VERT ! ===");
   } catch (err) {
     console.error("Échec du test :", err);
     await page.screenshot({ path: "screenshot-error.png" });
+    process.exit(1);
   } finally {
     await browser.close();
   }

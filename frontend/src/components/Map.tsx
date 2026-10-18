@@ -2,7 +2,14 @@
 
 import React, { useSyncExternalStore } from "react";
 import dynamic from "next/dynamic";
-import { CadastralParcelFeature, CasiasItem, IcpeItem, GeoJsonObject } from "@/types";
+import {
+  CadastralParcelFeature,
+  CasiasItem,
+  IcpeItem,
+  BssBoreholeItem,
+  PiezometreItem,
+  GeoJsonObject,
+} from "@/types";
 
 interface MapProps {
   center: [number, number];
@@ -14,6 +21,8 @@ interface MapProps {
   bufferMeters: number;
   casiasSites: CasiasItem[];
   icpeSites: IcpeItem[];
+  bssBoreholes?: BssBoreholeItem[];
+  piezometres?: PiezometreItem[];
 }
 
 const DynamicMapInner = dynamic(() => import("./MapInner"), {

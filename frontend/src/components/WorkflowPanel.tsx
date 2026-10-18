@@ -205,6 +205,11 @@ export default function WorkflowPanel({
 
   const casiasCount = study?.collected_data?.casias?.length ?? 0;
   const icpeCount = study?.collected_data?.icpe?.length ?? 0;
+  const bssCount = study?.collected_data?.bss?.length ?? 0;
+  const bssCoupesCount = study?.collected_data?.bss?.filter((b) => b.coupe_disponible)?.length ?? 0;
+  const piezoCount = study?.collected_data?.piezometrie?.length ?? 0;
+  const natureCount = study?.collected_data?.zonages_naturels?.length ?? 0;
+  const alti = study?.collected_data?.altimetrie;
 
   return (
     <aside className="w-full h-full flex flex-col bg-slate-50 border-r border-slate-200 shadow-sm z-10 overflow-hidden">
@@ -430,14 +435,14 @@ export default function WorkflowPanel({
                 <button
                   disabled={isCreatingStudy || isCollecting}
                   onClick={handleCreateAndCollect}
-                  className="w-full py-2.5 px-4 text-xs font-semibold rounded bg-[#1b4332] text-white hover:bg-[#2d6a4f] disabled:opacity-50 flex items-center justify-center gap-2 transition-colors mt-2 cursor-pointer"
+                  className="w-full py-2.5 px-4 text-xs font-semibold rounded bg-[#1b4332] text-white hover:bg-[#2d6a4f] disabled:opacity-50 flex items-center justify-center gap-2 transition-colors mt-2 cursor-pointer shadow-xs"
                 >
                   {isCreatingStudy || isCollecting ? (
                     <Loader2 className="h-4 w-4 animate-spin" />
                   ) : (
                     <ShieldAlert className="h-4 w-4" />
                   )}
-                  Créer le dossier &amp; Interroger Géorisques
+                  Créer le dossier &amp; Interroger les 5 sources d&apos;État
                 </button>
               ) : (
                 <button
@@ -450,7 +455,7 @@ export default function WorkflowPanel({
                   ) : (
                     <RefreshCw className="h-3.5 w-3.5" />
                   )}
-                  Actualiser la collecte Géorisques
+                  Actualiser la collecte multi-sources
                 </button>
               )}
             </div>
@@ -459,10 +464,10 @@ export default function WorkflowPanel({
 
         {/* Step 4: Environmental Synthesis & Word Export */}
         {study && study.status !== "draft" && (
-          <section className="space-y-3 pt-3 border-t border-slate-200">
+          <section className="space-y-4 pt-3 border-t border-slate-200">
             <div className="flex items-center justify-between">
               <span className="text-xs font-bold uppercase tracking-wider text-slate-700">
-                4. Synthèse &amp; Rapport d&apos;étude
+                4. Synthèse Documentaire Complète
               </span>
               <span
                 className={`text-[11px] font-semibold px-2 py-0.5 rounded ${
@@ -474,40 +479,132 @@ export default function WorkflowPanel({
                 }`}
               >
                 {study.status === "completed"
-                  ? "Collecte complète"
+                  ? "5/5 sources connectées"
                   : study.status === "partial_error"
                   ? "Collecte partielle"
                   : study.status}
               </span>
             </div>
 
-            {/* Metrics cards */}
+            {/* Metrics cards (4 tiles) */}
             <div className="grid grid-cols-2 gap-2">
-              <div className="p-3 bg-white border border-amber-200 rounded-md">
+              <div className="p-2.5 bg-white border border-amber-200 rounded-md">
                 <div className="text-[11px] text-amber-800 font-medium">CASIAS / BASIAS</div>
-                <div className="text-lg font-bold text-slate-900 tabular-nums">
+                <div className="text-base font-bold text-slate-900 tabular-nums">
                   {casiasCount} site(s)
                 </div>
-                <div className="text-[10px] text-slate-500">Activités historiques</div>
+                <div className="text-[10px] text-slate-500">Activités industrielles</div>
               </div>
 
-              <div className="p-3 bg-white border border-red-200 rounded-md">
+              <div className="p-2.5 bg-white border border-red-200 rounded-md">
                 <div className="text-[11px] text-red-800 font-medium">Installations ICPE</div>
-                <div className="text-lg font-bold text-slate-900 tabular-nums">
+                <div className="text-base font-bold text-slate-900 tabular-nums">
                   {icpeCount} site(s)
                 </div>
-                <div className="text-[10px] text-slate-500">Régimes enregistrés</div>
+                <div className="text-[10px] text-slate-500">Régimes préfectoraux</div>
+              </div>
+
+              <div className="p-2.5 bg-white border border-emerald-200 rounded-md">
+                <div className="text-[11px] text-emerald-800 font-medium">Forages BSS (BRGM)</div>
+                <div className="text-base font-bold text-slate-900 tabular-nums">
+                  {bssCount} ouvrage(s)
+                </div>
+                <div className="text-[10px] text-emerald-700 font-semibold">{bssCoupesCount} coupe(s) numérisée(s)</div>
+              </div>
+
+              <div className="p-2.5 bg-white border border-cyan-200 rounded-md">
+                <div className="text-[11px] text-cyan-800 font-medium">Piézométrie &amp; Nappe</div>
+                <div className="text-base font-bold text-slate-900 tabular-nums">
+                  {piezoCount > 0 ? `${piezoCount} station(s)` : "Aucun piézo"}
+                </div>
+                <div className="text-[10px] text-slate-500">
+                  {alti?.z_mean ? `Alt. ${alti.z_mean} m NGF` : "Hub'Eau Ades"}
+                </div>
               </div>
             </div>
+
+            {/* Topography & Subsoil details */}
+            <div className="p-3 bg-white border border-slate-200 rounded-md space-y-2 text-xs">
+              <div className="font-bold text-slate-800 border-b border-slate-100 pb-1 flex items-center justify-between">
+                <span>Topographie &amp; Sous-sol</span>
+                {alti?.z_mean && (
+                  <span className="text-[11px] font-mono text-emerald-700 font-semibold">
+                    {alti.z_mean} m NGF (dénivelé {alti.denivele} m)
+                  </span>
+                )}
+              </div>
+
+              {piezoCount > 0 && study.collected_data?.piezometrie?.[0] && (
+                <div className="text-[11px] text-slate-600">
+                  <b>Nappe la plus proche :</b> {study.collected_data.piezometrie[0].profondeur_nappe ? `${study.collected_data.piezometrie[0].profondeur_nappe} m sous sol` : "profondeur n.d."}{" "}
+                  {study.collected_data.piezometrie[0].cote_ngf ? `(cote ${study.collected_data.piezometrie[0].cote_ngf} m NGF)` : ""}{" "}
+                  à {Math.round(study.collected_data.piezometrie[0].distance_meters)} m.
+                </div>
+              )}
+
+              {bssCount > 0 && (
+                <div className="space-y-1">
+                  <div className="text-[11px] font-semibold text-slate-700">Forages BSS de référence :</div>
+                  <div className="max-h-28 overflow-y-auto space-y-1 pr-1">
+                    {study.collected_data.bss?.slice(0, 5).map((b) => (
+                      <div key={b.reference} className="p-1.5 bg-slate-50 rounded border border-slate-200 text-[11px] flex items-center justify-between">
+                        <div>
+                          <span className="font-mono font-bold text-slate-800">{b.reference}</span>
+                          <span className="text-slate-500 ml-1.5">({b.nature || "FORAGE"})</span>
+                        </div>
+                        <a
+                          href={b.url_infoterre}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className={`text-[10px] font-semibold px-1.5 py-0.5 rounded ${
+                            b.coupe_disponible ? "bg-emerald-100 text-emerald-800" : "bg-slate-200 text-slate-700"
+                          } hover:underline`}
+                        >
+                          {b.coupe_disponible ? "Coupe géol." : "Fiche BSS"} &rarr;
+                        </a>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Biodiversity details */}
+            {natureCount > 0 && (
+              <div className="p-3 bg-white border border-slate-200 rounded-md space-y-2 text-xs">
+                <div className="font-bold text-slate-800 border-b border-slate-100 pb-1 flex items-center justify-between">
+                  <span>Sensibilité Écologique (INPN)</span>
+                  <span className="text-[11px] font-mono text-blue-700 font-semibold">{natureCount} zonage(s)</span>
+                </div>
+                <div className="max-h-28 overflow-y-auto space-y-1 pr-1">
+                  {study.collected_data.zonages_naturels?.slice(0, 4).map((zn) => (
+                    <div key={zn.id_mnhn} className="p-1.5 bg-slate-50 rounded border border-slate-200 text-[11px] flex items-center justify-between">
+                      <div className="truncate mr-2">
+                        <div className="font-semibold text-slate-800 truncate">{zn.nom_site}</div>
+                        <div className="text-[10px] text-slate-500">{zn.type_zonage} — {zn.statut_recoupement}</div>
+                      </div>
+                      <a
+                        href={zn.url_fiche}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-[10px] font-semibold text-blue-700 hover:text-blue-900 shrink-0 underline"
+                      >
+                        INPN &rarr;
+                      </a>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {/* Export DOCX Button */}
             <a
               href={getDocxExportUrl(study.id)}
               download
-              className="w-full py-2.5 px-4 text-xs font-semibold rounded bg-[#1b4332] text-white hover:bg-[#2d6a4f] flex items-center justify-center gap-2 shadow-xs transition-colors"
+              className="w-full py-2.5 px-4 text-xs font-semibold rounded bg-[#1b4332] text-white hover:bg-[#2d6a4f] flex items-center justify-center gap-2 shadow-xs transition-colors cursor-pointer"
             >
               <FileDown className="h-4 w-4" />
-              Télécharger le rapport Word (.docx)
+              Télécharger le rapport Word enrichi (.docx)
             </a>
           </section>
         )}

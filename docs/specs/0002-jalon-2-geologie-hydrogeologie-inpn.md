@@ -1,9 +1,9 @@
 # Spécification Fonctionnelle & Technique : Jalon 2 - Géologie, Hydrogéologie, INPN & SIG Multi-couches
 
 - **Issue GitHub** : [#8](https://github.com/earywen/Soil-UP/issues/8) (Sous-tickets : [#9](https://github.com/earywen/Soil-UP/issues/9), [#10](https://github.com/earywen/Soil-UP/issues/10), [#11](https://github.com/earywen/Soil-UP/issues/11), [#12](https://github.com/earywen/Soil-UP/issues/12), [#13](https://github.com/earywen/Soil-UP/issues/13), [#14](https://github.com/earywen/Soil-UP/issues/14))
-- **Statut** : `building`
+- **Statut** : `done`
 - **Date** : 2026-10-18
-- **Vérifié** : En attente d'implémentation
+- **Vérifié** : 2026-10-18 (25/25 tests pytest passés, build Next.js validé, test Playwright E2E avec 5 APIs en direct validé, livrable .docx enrichi opérationnel)
 
 ---
 

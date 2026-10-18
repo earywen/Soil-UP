@@ -82,9 +82,61 @@ export interface IcpeItem {
   [key: string]: unknown;
 }
 
+export interface AltimetrieResult {
+  z_mean?: number;
+  z_min?: number;
+  z_max?: number;
+  denivele?: number;
+  unit?: string;
+  error?: string;
+}
+
+export interface BssBoreholeItem {
+  reference: string;
+  bss_id?: string;
+  nom_commune?: string;
+  nature?: string;
+  prof_atteinte?: number;
+  zsol?: number;
+  coupe_disponible: boolean;
+  nb_scans_coupe?: number;
+  url_infoterre: string;
+  latitude: number;
+  longitude: number;
+  distance_meters: number;
+}
+
+export interface PiezometreItem {
+  code_bss: string;
+  bss_id?: string;
+  nom_commune?: string;
+  altitude_station?: number;
+  profondeur_investigation?: number;
+  latitude: number;
+  longitude: number;
+  distance_meters: number;
+  date_mesure?: string;
+  profondeur_nappe?: number;
+  cote_ngf?: number;
+  qualification?: string;
+}
+
+export interface ZonageNaturelItem {
+  id_mnhn: string;
+  nom_site: string;
+  type_zonage: string;
+  distance_meters: number;
+  statut_recoupement: string;
+  url_fiche: string;
+}
+
 export interface CollectedData {
   casias?: CasiasItem[];
   icpe?: IcpeItem[];
+  altimetrie?: AltimetrieResult;
+  bss?: BssBoreholeItem[];
+  piezometrie?: PiezometreItem[];
+  zonages_naturels?: ZonageNaturelItem[];
   errors?: Record<string, string>;
   error?: string;
 }

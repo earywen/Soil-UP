@@ -62,6 +62,8 @@ export default function Home() {
 
   const casiasSites = study?.collected_data?.casias || [];
   const icpeSites = study?.collected_data?.icpe || [];
+  const bssBoreholes = study?.collected_data?.bss || [];
+  const piezometres = study?.collected_data?.piezometrie || [];
 
   return (
     <main className="h-screen w-screen flex flex-row overflow-hidden bg-slate-100">
@@ -94,6 +96,8 @@ export default function Home() {
           bufferMeters={bufferMeters}
           casiasSites={casiasSites}
           icpeSites={icpeSites}
+          bssBoreholes={bssBoreholes}
+          piezometres={piezometres}
         />
       </div>
     </main>

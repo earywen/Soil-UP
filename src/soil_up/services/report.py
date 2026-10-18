@@ -30,7 +30,7 @@ class ReportGeneratorService:
             run.font.size = Pt(18)
             run.font.bold = True
 
-        p_subtitle = doc.add_paragraph("Étude historique préliminaire des risques environnementaux et pollutions des sols")
+        p_subtitle = doc.add_paragraph("Étude historique préliminaire des risques environnementaux et pollutions des sols (NF X 31-620 Phase 1)")
         p_subtitle.alignment = WD_ALIGN_PARAGRAPH.CENTER
         
         p_site = doc.add_paragraph()
@@ -90,9 +90,92 @@ class ReportGeneratorService:
 
         doc.add_paragraph().paragraph_format.space_after = Pt(15)
 
-        # 3. Contexte Historique Industriel (BASIAS / CASIAS)
-        h3 = doc.add_heading("3. Inventaire historique des activités industrielles (BASIAS / CASIAS)", level=1)
+        # 3. Contexte Topographique, Géologique & Hydrogéologique
+        h3 = doc.add_heading("3. Contexte Topographique, Géologique & Hydrogéologique", level=1)
         for run in h3.runs:
+            run.font.color.rgb = title_color
+
+        # Altimétrie MNT
+        alti = collected_data.get("altimetrie")
+        if alti and alti.get("z_mean") is not None:
+            p_alti = doc.add_paragraph()
+            p_alti.add_run("Topographie & Relief (IGN RGE ALTI) : ").bold = True
+            p_alti.add_run(
+                f"L'altitude moyenne du site est de {alti.get('z_mean')} m NGF-IGN69 "
+                f"(min : {alti.get('z_min')} m, max : {alti.get('z_max')} m, dénivelé : {alti.get('denivele')} m)."
+            )
+        else:
+            doc.add_paragraph("Données altimétriques non disponibles pour ce secteur.")
+
+        # Hydrogéologie & Piézomètres
+        piezo_list = collected_data.get("piezometrie", [])
+        p_piezo_title = doc.add_paragraph()
+        p_piezo_title.add_run("Hydrogéologie & Nappe Phréatique (Hub'Eau) : ").bold = True
+        if piezo_list:
+            closest_piezo = piezo_list[0]
+            prof_str = f"{closest_piezo.get('profondeur_nappe')} m sous le sol" if closest_piezo.get('profondeur_nappe') is not None else "non mesurée"
+            cote_str = f"{closest_piezo.get('cote_ngf')} m NGF" if closest_piezo.get('cote_ngf') is not None else "non renseignée"
+            p_piezo_title.add_run(
+                f"Au piézomètre le plus proche ({closest_piezo.get('code_bss')}, situé à {closest_piezo.get('distance_meters')} m), "
+                f"le niveau de l'eau souterraine est relevé à {prof_str} (cote : {cote_str})."
+            )
+
+            piezo_table = doc.add_table(rows=1, cols=5)
+            piezo_table.alignment = WD_TABLE_ALIGNMENT.CENTER
+            piezo_table.style = "Table Grid"
+            pz_headers = ["Code BSS", "Commune", "Profondeur Eau (m)", "Cote Nappe (m NGF)", "Distance (m)"]
+            for col_idx, htext in enumerate(pz_headers):
+                cell = piezo_table.cell(0, col_idx)
+                cell.text = htext
+                cell.paragraphs[0].runs[0].font.bold = True
+
+            for pz in piezo_list[:5]:
+                row_cells = piezo_table.add_row().cells
+                row_cells[0].text = str(pz.get("code_bss", "-"))
+                row_cells[1].text = str(pz.get("nom_commune", "-"))
+                row_cells[2].text = str(pz.get("profondeur_nappe") if pz.get("profondeur_nappe") is not None else "-")
+                row_cells[3].text = str(pz.get("cote_ngf") if pz.get("cote_ngf") is not None else "-")
+                row_cells[4].text = f"{pz.get('distance_meters')} m"
+        else:
+            p_piezo_title.add_run(f"Aucun piézomètre recensé dans le buffer de {buffer_meters} m.")
+
+        doc.add_paragraph()
+
+        # Sondages BSS
+        bss_list = collected_data.get("bss", [])
+        p_bss_title = doc.add_paragraph()
+        p_bss_title.add_run("Banque du Sous-Sol & Sondages de reconnaissance (BRGM) : ").bold = True
+        if bss_list:
+            nb_coupes = sum(1 for b in bss_list if b.get("coupe_disponible"))
+            p_bss_title.add_run(
+                f"{len(bss_list)} ouvrage(s) BSS recensé(s) dans le périmètre d'étude, "
+                f"dont {nb_coupes} disposant d'une coupe géologique / lithologique numérisée."
+            )
+
+            bss_table = doc.add_table(rows=1, cols=5)
+            bss_table.alignment = WD_TABLE_ALIGNMENT.CENTER
+            bss_table.style = "Table Grid"
+            bss_headers = ["Référence BSS", "Nature", "Prof. (m)", "Coupe lithologique", "Distance (m)"]
+            for col_idx, htext in enumerate(bss_headers):
+                cell = bss_table.cell(0, col_idx)
+                cell.text = htext
+                cell.paragraphs[0].runs[0].font.bold = True
+
+            for b in bss_list[:10]:
+                row_cells = bss_table.add_row().cells
+                row_cells[0].text = str(b.get("reference", "-"))
+                row_cells[1].text = str(b.get("nature", "FORAGE"))
+                row_cells[2].text = str(b.get("prof_atteinte") if b.get("prof_atteinte") is not None else "-")
+                row_cells[3].text = "Disponible (InfoTerre)" if b.get("coupe_disponible") else "Non numérisée"
+                row_cells[4].text = f"{b.get('distance_meters')} m"
+        else:
+            p_bss_title.add_run(f"Aucun forage BSS recensé dans le buffer de {buffer_meters} m.")
+
+        doc.add_paragraph().paragraph_format.space_after = Pt(15)
+
+        # 4. Contexte Historique Industriel (BASIAS / CASIAS)
+        h4 = doc.add_heading("4. Inventaire historique des activités industrielles (BASIAS / CASIAS)", level=1)
+        for run in h4.runs:
             run.font.color.rgb = title_color
 
         casias_list = collected_data.get("casias", [])
@@ -119,9 +202,9 @@ class ReportGeneratorService:
 
         doc.add_paragraph().paragraph_format.space_after = Pt(15)
 
-        # 4. Installations Classées (ICPE)
-        h4 = doc.add_heading("4. Installations Classées pour la Protection de l'Environnement (ICPE)", level=1)
-        for run in h4.runs:
+        # 5. Installations Classées (ICPE)
+        h5 = doc.add_heading("5. Installations Classées pour la Protection de l'Environnement (ICPE)", level=1)
+        for run in h5.runs:
             run.font.color.rgb = title_color
 
         icpe_list = collected_data.get("icpe", [])
@@ -144,6 +227,37 @@ class ReportGeneratorService:
                 row_cells[3].text = "Emprise directe" if dist == 0 else f"{dist} m"
         else:
             doc.add_paragraph(f"Aucune installation classée (ICPE) recensée dans le buffer de {buffer_meters} m.")
+
+        doc.add_paragraph().paragraph_format.space_after = Pt(15)
+
+        # 6. Sensibilité Écologique & Milieux Naturels (INPN)
+        h6 = doc.add_heading("6. Sensibilité Écologique & Milieux Naturels", level=1)
+        for run in h6.runs:
+            run.font.color.rgb = title_color
+
+        nature_list = collected_data.get("zonages_naturels", [])
+        if nature_list:
+            p_nat = doc.add_paragraph()
+            p_nat.add_run(f"{len(nature_list)} zonage(s) naturel(s) et écologique(s) inventorié(s) à proximité du site :")
+
+            n_table = doc.add_table(rows=1, cols=4)
+            n_table.alignment = WD_TABLE_ALIGNMENT.CENTER
+            n_table.style = "Table Grid"
+            nheaders = ["Type de Zonage", "Nom du Site", "Distance minimale", "Statut / Lien"]
+            for col_idx, htext in enumerate(nheaders):
+                cell = n_table.cell(0, col_idx)
+                cell.text = htext
+                cell.paragraphs[0].runs[0].font.bold = True
+
+            for zn in nature_list[:10]:
+                row_cells = n_table.add_row().cells
+                row_cells[0].text = str(zn.get("type_zonage", "-"))
+                row_cells[1].text = str(zn.get("nom_site", "-"))
+                dist_m = zn.get("distance_meters", 0.0)
+                row_cells[2].text = "Recoupement direct (Sur site)" if dist_m == 0 else f"{dist_m} m"
+                row_cells[3].text = str(zn.get("url_fiche") or f"INPN ({zn.get('id_mnhn')})")
+        else:
+            doc.add_paragraph(f"Aucun zonage naturel protégé (ZNIEFF, Natura 2000) recensé dans le buffer de {buffer_meters} m.")
 
         # Save to BytesIO
         buffer = io.BytesIO()
