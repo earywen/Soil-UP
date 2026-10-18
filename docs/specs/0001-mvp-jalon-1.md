@@ -1,8 +1,9 @@
 # Spécification Fonctionnelle & Technique : MVP Jalon 1
 
 - **Issue GitHub** : [#1](https://github.com/earywen/Soil-UP/issues/1)
-- **Statut** : `ready-for-agent`
+- **Statut** : `done`
 - **Date** : 2026-10-18
+- **Vérifié** : 2026-10-18 (16/16 tests backend pytest validés, suite Playwright E2E passée en vert, rapport Word .docx opérationnel)
 
 ---
 
