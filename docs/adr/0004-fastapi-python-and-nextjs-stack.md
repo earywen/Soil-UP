@@ -1,0 +1,3 @@
+# Choix de la stack technique : FastAPI (Python) et Next.js (TypeScript)
+
+Le cœur de valeur de l'application repose sur le traitement de données spatiales (buffers, projections géographiques avec Shapely/PyProj), l'orchestration asynchrone d'appels d'APIs publiques et la manipulation de documents bureautiques (`python-docx`), des domaines où l'écosystème Python excelle. Nous adoptons FastAPI pour le backend afin de gérer nativement l'asynchronisme et les WebSockets, combiné à un frontend moderne Next.js / React avec Leaflet ou MapLibre GL pour la réactivité de l'interface cartographique split-screen.

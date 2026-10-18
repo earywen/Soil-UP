@@ -1,0 +1,3 @@
+# Rendu et insertion automatique de figures cartographiques statiques dans le rapport Word
+
+Pour éliminer les captures d'écran manuelles fastidieuses, le système doit inclure des figures cartographiques lisibles et professionnelles directement dans les chapitres du livrable `.docx`. Nous implémentons un module de génération cartographique côté backend qui requête les flux de tuiles (WMS/WMTS de l'IGN et du BRGM), projette l'emprise vectorielle et les buffers d'investigation par-dessus, et exporte des images PNG haute résolution insérées automatiquement dans les sections correspondantes du rapport Word.
