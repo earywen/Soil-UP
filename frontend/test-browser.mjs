@@ -33,9 +33,9 @@ async function run() {
     await page.waitForSelector(".leaflet-container", { timeout: 10000 });
     console.log("Carte Leaflet trouvée dans le DOM !");
 
-    // Étape 1 : Taper une adresse dans le champ de recherche BAN
+    // Étape 1 : Taper l'adresse utilisateur dans le champ de recherche BAN
     const searchInput = page.locator('input[placeholder*="Ex: 14 rue de l\'Industrie"]');
-    await searchInput.fill("14 rue de l'Industrie Rouen");
+    await searchInput.fill("6 Rue Stanislas Girardin 76000 Rouen");
     console.log("Saisie de l'adresse effectuée...");
 
     // Attendre l'apparition des suggestions d'adresses
@@ -51,9 +51,6 @@ async function run() {
     await page.waitForSelector("text=Section", { timeout: 10000 });
     console.log("Parcelles cadastrales chargées avec succès !");
 
-    await page.screenshot({ path: "screenshot-parcels.png" });
-    console.log("Capture d'écran enregistrée : screenshot-parcels.png");
-
     // Étape 2 : Cliquer sur "Valider l'emprise"
     const unionButton = page.locator('button:has-text("Valider l\'emprise")');
     await unionButton.click();
@@ -62,6 +59,11 @@ async function run() {
     // Attendre l'affichage de l'emprise calculée
     await page.waitForSelector("text=Emprise unifiée calculée", { timeout: 10000 });
     console.log("Emprise unifiée calculée affichée !");
+
+    // Sélectionner le buffer 500 m comme l'utilisateur
+    const buffer500Btn = page.locator('button:has-text("500 m")');
+    await buffer500Btn.click();
+    console.log("Buffer 500m sélectionné.");
 
     // Étape 3 : Cliquer sur "Créer le dossier & Interroger Géorisques"
     const collectButton = page.locator('button:has-text("Interroger Géorisques")');

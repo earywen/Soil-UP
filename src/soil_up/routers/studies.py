@@ -17,6 +17,7 @@ router = APIRouter(prefix="/api/studies", tags=["Studies"])
 georisques_connector = GeorisquesConnector()
 report_service = ReportGeneratorService()
 
+@router.post("", response_model=StudyResponse, status_code=status.HTTP_201_CREATED)
 @router.post("/", response_model=StudyResponse, status_code=status.HTTP_201_CREATED)
 def create_study(payload: StudyCreateRequest, db: Session = Depends(get_db)):
     record = StudyModel(
@@ -33,6 +34,7 @@ def create_study(payload: StudyCreateRequest, db: Session = Depends(get_db)):
     db.refresh(record)
     return record
 
+@router.get("", response_model=List[StudyListItemResponse])
 @router.get("/", response_model=List[StudyListItemResponse])
 def list_studies(db: Session = Depends(get_db)):
     studies = db.query(StudyModel).order_by(StudyModel.created_at.desc()).all()
