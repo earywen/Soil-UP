@@ -1,5 +1,6 @@
 from fastapi import FastAPI
 from soil_up.routers.address import router as address_router
+from soil_up.routers.cadastre import router as cadastre_router
 
 app = FastAPI(
     title="Soil'UP API",
@@ -12,3 +13,4 @@ async def health_check():
     return {"status": "ok"}
 
 app.include_router(address_router)
+app.include_router(cadastre_router)
