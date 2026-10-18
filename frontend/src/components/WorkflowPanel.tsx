@@ -14,7 +14,7 @@ import {
   RefreshCw,
 } from "lucide-react";
 import {
-  AddressFeature,
+  AddressResultItem,
   CadastralParcelFeature,
   SiteEmpriseResult,
   StudyRecord,
@@ -29,7 +29,7 @@ import {
 } from "@/lib/api";
 
 interface WorkflowPanelProps {
-  onAddressSelect: (feature: AddressFeature) => void;
+  onAddressSelect: (item: AddressResultItem) => void;
   onParcelsLoaded: (parcels: CadastralParcelFeature[]) => void;
   selectedParcelIds: Set<string>;
   onToggleParcel: (parcel: CadastralParcelFeature) => void;
@@ -57,8 +57,8 @@ export default function WorkflowPanel({
 }: WorkflowPanelProps) {
   // Search state
   const [addressQuery, setAddressQuery] = useState("");
-  const [addressSuggestions, setAddressSuggestions] = useState<AddressFeature[]>([]);
-  const [selectedAddress, setSelectedAddress] = useState<AddressFeature | null>(null);
+  const [addressSuggestions, setAddressSuggestions] = useState<AddressResultItem[]>([]);
+  const [selectedAddress, setSelectedAddress] = useState<AddressResultItem | null>(null);
   const [isSearchingAddress, setIsSearchingAddress] = useState(false);
 
   // Cadastre state
@@ -89,7 +89,7 @@ export default function WorkflowPanel({
       setErrorMsg(null);
       try {
         const res = await searchAddress(addressQuery, 5);
-        setAddressSuggestions(res.features || []);
+        setAddressSuggestions(res.results || []);
       } catch {
         setErrorMsg("Impossible de joindre la Base Adresse Nationale.");
       } finally {
@@ -101,21 +101,20 @@ export default function WorkflowPanel({
   }, [addressQuery]);
 
   // Handle address selection
-  const handleSelectAddress = async (feature: AddressFeature) => {
-    setSelectedAddress(feature);
+  const handleSelectAddress = async (item: AddressResultItem) => {
+    setSelectedAddress(item);
     setAddressSuggestions([]);
-    setAddressQuery(feature.properties.label);
+    setAddressQuery(item.label);
     if (!studyTitle) {
-      setStudyTitle(`Diagnostic - ${feature.properties.city || feature.properties.label}`);
+      setStudyTitle(`Diagnostic - ${item.city || item.label}`);
     }
-    onAddressSelect(feature);
+    onAddressSelect(item);
 
     // Fetch cadastre parcels around coordinates
-    const [lon, lat] = feature.geometry.coordinates;
     setIsLoadingCadastre(true);
     setErrorMsg(null);
     try {
-      const cadastreData = await fetchCadastreParcels(lat, lon);
+      const cadastreData = await fetchCadastreParcels(item.latitude, item.longitude);
       onParcelsLoaded(cadastreData.features || []);
     } catch {
       setErrorMsg("Erreur lors de la récupération du cadastre IGN.");
@@ -151,8 +150,8 @@ export default function WorkflowPanel({
     try {
       const selectedList = parcels.filter((p) => selectedParcelIds.has(p.properties.id));
       const created = await createStudy({
-        name: studyTitle || `Étude SSP - ${selectedAddress.properties.label}`,
-        address: selectedAddress.properties.label,
+        name: studyTitle || `Étude SSP - ${selectedAddress.label}`,
+        address: selectedAddress.label,
         emprise: empriseResult.geometry,
         buffer_meters: bufferMeters,
         parcels: selectedList,
@@ -226,7 +225,7 @@ export default function WorkflowPanel({
           <button
             onClick={handleReset}
             title="Réinitialiser le dossier"
-            className="p-1.5 rounded text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
+            className="p-1.5 rounded text-slate-400 hover:text-white hover:bg-slate-800 transition-colors cursor-pointer"
           >
             <Trash2 className="h-4 w-4" />
           </button>
@@ -274,17 +273,17 @@ export default function WorkflowPanel({
             {/* Address Autocomplete Dropdown */}
             {addressSuggestions.length > 0 && (
               <ul className="absolute top-full left-0 right-0 mt-1 bg-white border border-slate-200 rounded-md shadow-lg z-20 max-h-56 overflow-y-auto divide-y divide-slate-100">
-                {addressSuggestions.map((feature) => (
+                {addressSuggestions.map((item, idx) => (
                   <li
-                    key={feature.properties.id}
-                    onClick={() => handleSelectAddress(feature)}
+                    key={`${item.label}-${idx}`}
+                    onClick={() => handleSelectAddress(item)}
                     className="p-2.5 hover:bg-slate-50 cursor-pointer text-xs text-slate-800 flex items-start gap-2 transition-colors"
                   >
                     <MapPin className="h-4 w-4 text-slate-400 shrink-0 mt-0.5" />
                     <div>
-                      <div className="font-semibold">{feature.properties.label}</div>
+                      <div className="font-semibold">{item.label}</div>
                       <div className="text-slate-500 text-[11px]">
-                        {feature.properties.context}
+                        {item.context || item.city}
                       </div>
                     </div>
                   </li>
@@ -347,7 +346,7 @@ export default function WorkflowPanel({
                 <button
                   disabled={selectedParcelIds.size === 0 || isUnitingParcels}
                   onClick={handleComputeUnion}
-                  className="w-full py-2 px-3 text-xs font-semibold rounded bg-[#1b4332] text-white hover:bg-[#2d6a4f] disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 transition-colors"
+                  className="w-full py-2 px-3 text-xs font-semibold rounded bg-[#1b4332] text-white hover:bg-[#2d6a4f] disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 transition-colors cursor-pointer"
                 >
                   {isUnitingParcels ? (
                     <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -411,7 +410,7 @@ export default function WorkflowPanel({
                       key={dist}
                       type="button"
                       onClick={() => onBufferChange(dist)}
-                      className={`flex-1 py-1.5 text-xs font-mono rounded border transition-colors ${
+                      className={`flex-1 py-1.5 text-xs font-mono rounded border transition-colors cursor-pointer ${
                         bufferMeters === dist
                           ? "bg-blue-50 border-blue-600 text-blue-900 font-bold"
                           : "bg-white border-slate-200 text-slate-700 hover:border-slate-300"
@@ -427,7 +426,7 @@ export default function WorkflowPanel({
                 <button
                   disabled={isCreatingStudy || isCollecting}
                   onClick={handleCreateAndCollect}
-                  className="w-full py-2.5 px-4 text-xs font-semibold rounded bg-[#1b4332] text-white hover:bg-[#2d6a4f] disabled:opacity-50 flex items-center justify-center gap-2 transition-colors mt-2"
+                  className="w-full py-2.5 px-4 text-xs font-semibold rounded bg-[#1b4332] text-white hover:bg-[#2d6a4f] disabled:opacity-50 flex items-center justify-center gap-2 transition-colors mt-2 cursor-pointer"
                 >
                   {isCreatingStudy || isCollecting ? (
                     <Loader2 className="h-4 w-4 animate-spin" />
@@ -440,7 +439,7 @@ export default function WorkflowPanel({
                 <button
                   disabled={isCollecting}
                   onClick={handleReCollect}
-                  className="w-full py-2 px-3 text-xs font-medium rounded bg-white border border-slate-300 text-slate-700 hover:bg-slate-50 disabled:opacity-50 flex items-center justify-center gap-2 transition-colors"
+                  className="w-full py-2 px-3 text-xs font-medium rounded bg-white border border-slate-300 text-slate-700 hover:bg-slate-50 disabled:opacity-50 flex items-center justify-center gap-2 transition-colors cursor-pointer"
                 >
                   {isCollecting ? (
                     <Loader2 className="h-3.5 w-3.5 animate-spin" />

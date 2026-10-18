@@ -4,7 +4,7 @@ import React, { useState } from "react";
 import WorkflowPanel from "@/components/WorkflowPanel";
 import Map from "@/components/Map";
 import {
-  AddressFeature,
+  AddressResultItem,
   CadastralParcelFeature,
   SiteEmpriseResult,
   StudyRecord,
@@ -26,9 +26,8 @@ export default function Home() {
   // Active study & collected data
   const [study, setStudy] = useState<StudyRecord | null>(null);
 
-  const handleAddressSelect = (feature: AddressFeature) => {
-    const [lon, lat] = feature.geometry.coordinates;
-    setMapCenter([lat, lon]);
+  const handleAddressSelect = (item: AddressResultItem) => {
+    setMapCenter([item.latitude, item.longitude]);
     setMapZoom(17);
     setSelectedParcelIds(new Set());
     setEmpriseResult(null);

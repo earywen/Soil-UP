@@ -1,24 +1,17 @@
-export interface AddressFeature {
-  type: string;
-  geometry: {
-    type: string;
-    coordinates: [number, number]; // [lon, lat]
-  };
-  properties: {
-    label: string;
-    score: number;
-    housenumber?: string;
-    street?: string;
-    postcode: string;
-    city: string;
-    context: string;
-    id: string;
-  };
+export interface AddressResultItem {
+  label: string;
+  name?: string;
+  postcode: string;
+  citycode: string;
+  city: string;
+  context?: string;
+  latitude: number;
+  longitude: number;
+  score: number;
 }
 
 export interface AddressSearchResponse {
-  type: string;
-  features: AddressFeature[];
+  results: AddressResultItem[];
 }
 
 export interface GeoJsonObject {
