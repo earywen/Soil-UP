@@ -234,6 +234,7 @@ export default function WorkflowPanel({
   const icpeCount = study?.collected_data?.icpe?.length ?? 0;
   const bssCount = study?.collected_data?.bss?.length ?? 0;
   const bssCoupesCount = study?.collected_data?.bss?.filter((b) => b.coupe_disponible)?.length ?? 0;
+  const bssWithWaterCount = study?.collected_data?.bss?.filter((b) => b.prof_eau_sol !== undefined && b.prof_eau_sol !== null)?.length ?? 0;
   const piezoCount = study?.collected_data?.piezometrie?.length ?? 0;
   const natureCount = study?.collected_data?.zonages_naturels?.length ?? 0;
   const alti = study?.collected_data?.altimetrie;
@@ -579,16 +580,20 @@ export default function WorkflowPanel({
                 <div className="text-base font-bold text-slate-900 tabular-nums">
                   {bssCount} ouvrage(s)
                 </div>
-                <div className="text-[10px] text-emerald-700 font-semibold">{bssCoupesCount} coupe(s) numérisée(s)</div>
+                <div className="text-[10px] text-emerald-700 font-semibold">
+                  {bssWithWaterCount > 0
+                    ? `${bssCoupesCount} coupes • ${bssWithWaterCount} avec eau`
+                    : `${bssCoupesCount} coupe(s) numérisée(s)`}
+                </div>
               </div>
 
               <div className="p-2.5 bg-white border border-cyan-200 rounded-md">
-                <div className="text-[11px] text-cyan-800 font-medium">Piézométrie &amp; Nappe</div>
+                <div className="text-[11px] text-cyan-800 font-medium">Piézomètres ADES (Hub&apos;Eau)</div>
                 <div className="text-base font-bold text-slate-900 tabular-nums">
-                  {piezoCount > 0 ? `${piezoCount} station(s)` : "Aucun piézo"}
+                  {piezoCount > 0 ? `${piezoCount} station(s)` : "0 station"}
                 </div>
                 <div className="text-[10px] text-slate-500">
-                  {alti?.z_mean ? `Alt. ${alti.z_mean} m NGF` : "Hub'Eau Ades"}
+                  {piezoCount > 0 ? "Chronique piézométrique" : "Aucun piézo ADES à 500m"}
                 </div>
               </div>
             </div>
@@ -644,14 +649,28 @@ export default function WorkflowPanel({
                 </div>
 
                 {gw.points_appui && gw.points_appui.length > 0 && (
-                  <div className="pt-0.5">
+                  <div className="pt-0.5 space-y-2">
+                    {gw.methode_calcul && (
+                      <div className="text-[11px] text-cyan-950/80 bg-cyan-50/70 p-2 rounded border border-cyan-200/50 leading-relaxed">
+                        {gw.methode_calcul}
+                      </div>
+                    )}
+
                     <button
                       type="button"
                       onClick={() => setShowGwDetails(!showGwDetails)}
                       className="text-[11px] text-cyan-800 hover:text-cyan-950 font-semibold flex items-center gap-1 cursor-pointer transition-colors"
                     >
                       <span>
-                        {showGwDetails ? "Masquer les points d'appui" : `Voir les ${gw.nb_points_appui} forages & piézos de référence`}
+                        {showGwDetails
+                          ? "Masquer les points d'appui"
+                          : `Voir les ${gw.nb_points_appui} ouvrages de référence (${
+                              gw.points_appui.filter((p) => p.source === "BSS").length
+                            } forages BSS avec eau${
+                              gw.points_appui.filter((p) => p.source === "HUB_EAU").length > 0
+                                ? ` + ${gw.points_appui.filter((p) => p.source === "HUB_EAU").length} piézo(s) ADES`
+                                : ""
+                            })`}
                       </span>
                       {showGwDetails ? (
                         <ChevronUp className="h-3 w-3" />
@@ -803,11 +822,15 @@ export default function WorkflowPanel({
                 )}
               </div>
 
-              {piezoCount > 0 && study.collected_data?.piezometrie?.[0] && (
+              {piezoCount > 0 && study.collected_data?.piezometrie?.[0] ? (
                 <div className="text-[11px] text-slate-600">
-                  <b>Nappe la plus proche :</b> {study.collected_data.piezometrie[0].profondeur_nappe ? `${study.collected_data.piezometrie[0].profondeur_nappe} m sous sol` : "profondeur n.d."}{" "}
+                  <b>Piézomètre ADES le plus proche :</b> {study.collected_data.piezometrie[0].profondeur_nappe ? `${study.collected_data.piezometrie[0].profondeur_nappe} m sous sol` : "profondeur n.d."}{" "}
                   {study.collected_data.piezometrie[0].cote_ngf ? `(cote ${study.collected_data.piezometrie[0].cote_ngf} m NGF)` : ""}{" "}
                   à {Math.round(study.collected_data.piezometrie[0].distance_meters)} m.
+                </div>
+              ) : (
+                <div className="text-[11px] text-slate-500">
+                  <b>Piézomètres ADES (Hub&apos;Eau) :</b> Aucun ouvrage de suivi temps réel dans le rayon de {bufferMeters} m. La profondeur de nappe est déduite des forages BSS géoréférencés.
                 </div>
               )}
 
