@@ -98,12 +98,38 @@ export interface BssBoreholeItem {
   nature?: string;
   prof_atteinte?: number;
   zsol?: number;
+  prof_eau_sol?: number;
+  date_eau_sol?: string;
+  cote_eau_calculee?: number;
   coupe_disponible: boolean;
   nb_scans_coupe?: number;
   url_infoterre: string;
   latitude: number;
   longitude: number;
   distance_meters: number;
+}
+
+export interface GroundwaterSupportPoint {
+  source: string;
+  identifiant: string;
+  nom?: string;
+  distance_meters: number;
+  prof_eau_sol?: number;
+  cote_eau_ngf?: number;
+  date_mesure?: string;
+  altitude_sol_ouvrage?: number;
+}
+
+export interface GroundwaterLevelEstimation {
+  profondeur_estimee_m?: number;
+  profondeur_min_m?: number;
+  profondeur_max_m?: number;
+  cote_nappe_estimee_ngf?: number;
+  altitude_site_ngf?: number;
+  indice_confiance: "Élevé" | "Moyen" | "Faible" | "Non déterminé";
+  methode_calcul: string;
+  nb_points_appui: number;
+  points_appui: GroundwaterSupportPoint[];
 }
 
 export interface PiezometreItem {
@@ -136,6 +162,7 @@ export interface CollectedData {
   altimetrie?: AltimetrieResult;
   bss?: BssBoreholeItem[];
   piezometrie?: PiezometreItem[];
+  groundwater_level?: GroundwaterLevelEstimation;
   zonages_naturels?: ZonageNaturelItem[];
   errors?: Record<string, string>;
   error?: string;

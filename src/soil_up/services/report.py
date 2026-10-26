@@ -95,6 +95,38 @@ class ReportGeneratorService:
         for run in h3.runs:
             run.font.color.rgb = title_color
 
+        # Synthèse prioritaire : Profondeur de la Nappe au droit du site
+        gw = collected_data.get("groundwater_level")
+        if gw and gw.get("profondeur_estimee_m") is not None:
+            p_gw_title = doc.add_paragraph()
+            r_gw_title = p_gw_title.add_run("💧 ESTIMATION DU NIVEAU DE LA NAPPE AU DROIT DU SITE (NF X 31-620) :")
+            r_gw_title.bold = True
+            r_gw_title.font.color.rgb = title_color
+
+            gw_table = doc.add_table(rows=4, cols=2)
+            gw_table.alignment = WD_TABLE_ALIGNMENT.CENTER
+            gw_table.style = "Table Grid"
+
+            gw_data = [
+                ("Profondeur estimée sous le terrain naturel", f"~ {gw.get('profondeur_estimee_m')} m / sol"),
+                ("Fourchette locale observée (hautes / basses eaux)", f"{gw.get('profondeur_min_m')} m à {gw.get('profondeur_max_m')} m / sol"),
+                ("Cote piézométrique absolue estimée", f"{gw.get('cote_nappe_estimee_ngf')} m NGF" if gw.get('cote_nappe_estimee_ngf') is not None else "Non déterminée"),
+                ("Fiabilité & Indice de confiance", f"{gw.get('indice_confiance')} ({gw.get('nb_points_appui')} ouvrage(s) d'appui exploité(s))"),
+            ]
+            for row_i, (gk, gv) in enumerate(gw_data):
+                cell_k = gw_table.cell(row_i, 0)
+                cell_v = gw_table.cell(row_i, 1)
+                cell_k.text = gk
+                cell_k.paragraphs[0].runs[0].font.bold = True
+                cell_v.text = str(gv)
+
+            p_method = doc.add_paragraph()
+            p_method.paragraph_format.space_before = Pt(6)
+            p_method.add_run("Méthode de calcul : ").bold = True
+            p_method.add_run(str(gw.get("methode_calcul", "")))
+
+            doc.add_paragraph()
+
         # Altimétrie MNT
         alti = collected_data.get("altimetrie")
         if alti and alti.get("z_mean") is not None:
@@ -152,10 +184,10 @@ class ReportGeneratorService:
                 f"dont {nb_coupes} disposant d'une coupe géologique / lithologique numérisée."
             )
 
-            bss_table = doc.add_table(rows=1, cols=5)
+            bss_table = doc.add_table(rows=1, cols=6)
             bss_table.alignment = WD_TABLE_ALIGNMENT.CENTER
             bss_table.style = "Table Grid"
-            bss_headers = ["Référence BSS", "Nature", "Prof. (m)", "Coupe lithologique", "Distance (m)"]
+            bss_headers = ["Référence BSS", "Nature", "Prof. (m)", "Eau (m/sol)", "Coupe lithologique", "Distance (m)"]
             for col_idx, htext in enumerate(bss_headers):
                 cell = bss_table.cell(0, col_idx)
                 cell.text = htext
@@ -166,8 +198,9 @@ class ReportGeneratorService:
                 row_cells[0].text = str(b.get("reference", "-"))
                 row_cells[1].text = str(b.get("nature", "FORAGE"))
                 row_cells[2].text = str(b.get("prof_atteinte") if b.get("prof_atteinte") is not None else "-")
-                row_cells[3].text = "Disponible (InfoTerre)" if b.get("coupe_disponible") else "Non numérisée"
-                row_cells[4].text = f"{b.get('distance_meters')} m"
+                row_cells[3].text = f"{b.get('prof_eau_sol')} m" if b.get("prof_eau_sol") is not None else "Non relevée"
+                row_cells[4].text = "Disponible (InfoTerre)" if b.get("coupe_disponible") else "Non numérisée"
+                row_cells[5].text = f"{b.get('distance_meters')} m"
         else:
             p_bss_title.add_run(f"Aucun forage BSS recensé dans le buffer de {buffer_meters} m.")
 

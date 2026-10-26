@@ -77,6 +77,19 @@ class BssConnector:
                     except (ValueError, TypeError):
                         pass
 
+                prof_eau = None
+                if props.get("prof_eau_sol"):
+                    try:
+                        prof_eau = float(str(props["prof_eau_sol"]).replace(",", "."))
+                    except (ValueError, TypeError):
+                        pass
+
+                date_eau = props.get("date_eau_sol") or None
+
+                cote_eau = None
+                if zsol is not None and prof_eau is not None:
+                    cote_eau = round(zsol - prof_eau, 2)
+
                 nb_scans = 0
                 if props.get("nb_scans_coupe"):
                     try:
@@ -101,6 +114,9 @@ class BssConnector:
                         nature=props.get("nature") or "FORAGE",
                         prof_atteinte=prof,
                         zsol=zsol,
+                        prof_eau_sol=prof_eau,
+                        date_eau_sol=date_eau,
+                        cote_eau_calculee=cote_eau,
                         coupe_disponible=has_log,
                         nb_scans_coupe=nb_scans,
                         url_infoterre=url_info,

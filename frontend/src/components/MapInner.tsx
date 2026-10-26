@@ -53,6 +53,8 @@ export default function MapInner({
   // Basemap & overlay state
   const [activeBasemap, setActiveBasemap] = useState<"osm" | "ortho">("osm");
   const [showCadastreOverlay, setShowCadastreOverlay] = useState<boolean>(true);
+  const [showBdlisaOverlay, setShowBdlisaOverlay] = useState<boolean>(false);
+  const [showRemnappeOverlay, setShowRemnappeOverlay] = useState<boolean>(false);
 
   // Freehand drawing state
   const [drawingPoints, setDrawingPoints] = useState<L.LatLng[]>([]);
@@ -62,6 +64,8 @@ export default function MapInner({
   const osmTileLayerRef = useRef<L.TileLayer | null>(null);
   const orthoTileLayerRef = useRef<L.TileLayer | null>(null);
   const cadastreWMTSRef = useRef<L.TileLayer | null>(null);
+  const bdlisaWmsRef = useRef<L.TileLayer.WMS | null>(null);
+  const remnappeWmsRef = useRef<L.TileLayer.WMS | null>(null);
   const parcelsLayerGroupRef = useRef<L.LayerGroup | null>(null);
   const empriseLayerGroupRef = useRef<L.LayerGroup | null>(null);
   const bufferLayerGroupRef = useRef<L.LayerGroup | null>(null);
@@ -105,12 +109,32 @@ export default function MapInner({
       }
     );
 
+    // 4. BDLISA Hydrogeology WMS Layer (Sandre / BRGM)
+    const bdlisaLayer = L.tileLayer.wms("https://services.sandre.eaufrance.fr/geo/saq", {
+      layers: "EntiteHydroGeol_FXX",
+      format: "image/png",
+      transparent: true,
+      opacity: 0.6,
+      attribution: '&copy; <a href="https://bdlisa.eaufrance.fr/">Sandre / BRGM (BDLISA)</a>',
+    });
+
+    // 5. Remontées de Nappes WMS Layer (BRGM)
+    const remnappeLayer = L.tileLayer.wms("https://geoservices.brgm.fr/risques", {
+      layers: "REMNAPPE",
+      format: "image/png",
+      transparent: true,
+      opacity: 0.65,
+      attribution: '&copy; <a href="https://georisques.gouv.fr/">BRGM (Remontées de nappe)</a>',
+    });
+
     osmLayer.addTo(map);
     cadastreLayer.addTo(map);
 
     osmTileLayerRef.current = osmLayer;
     orthoTileLayerRef.current = orthoLayer;
     cadastreWMTSRef.current = cadastreLayer;
+    bdlisaWmsRef.current = bdlisaLayer;
+    remnappeWmsRef.current = remnappeLayer;
 
     // Controls
     L.control.zoom({ position: "bottomright" }).addTo(map);
@@ -245,6 +269,32 @@ export default function MapInner({
       if (map.hasLayer(cadastreLayer)) map.removeLayer(cadastreLayer);
     }
   }, [showCadastreOverlay]);
+
+  // Toggle BDLISA Aquifers Overlay
+  useEffect(() => {
+    const map = mapInstanceRef.current;
+    const bdlisaLayer = bdlisaWmsRef.current;
+    if (!map || !bdlisaLayer) return;
+
+    if (showBdlisaOverlay) {
+      if (!map.hasLayer(bdlisaLayer)) bdlisaLayer.addTo(map);
+    } else {
+      if (map.hasLayer(bdlisaLayer)) map.removeLayer(bdlisaLayer);
+    }
+  }, [showBdlisaOverlay]);
+
+  // Toggle Remontée de Nappes Overlay
+  useEffect(() => {
+    const map = mapInstanceRef.current;
+    const remnappeLayer = remnappeWmsRef.current;
+    if (!map || !remnappeLayer) return;
+
+    if (showRemnappeOverlay) {
+      if (!map.hasLayer(remnappeLayer)) remnappeLayer.addTo(map);
+    } else {
+      if (map.hasLayer(remnappeLayer)) map.removeLayer(remnappeLayer);
+    }
+  }, [showRemnappeOverlay]);
 
   // Update view on center change
   useEffect(() => {
@@ -419,27 +469,39 @@ export default function MapInner({
     bssBoreholes.forEach((b) => {
       if (b.latitude && b.longitude) {
         const hasCoupe = b.coupe_disponible;
+        const hasWater = b.prof_eau_sol !== undefined && b.prof_eau_sol !== null;
         const marker = L.circleMarker([b.latitude, b.longitude], {
-          radius: 6.5,
-          fillColor: hasCoupe ? "#059669" : "#2563eb",
-          color: "#ffffff",
-          weight: 2,
+          radius: hasWater ? 7.5 : 6.5,
+          fillColor: hasWater ? "#0284c7" : hasCoupe ? "#059669" : "#2563eb",
+          color: hasWater ? "#38bdf8" : "#ffffff",
+          weight: hasWater ? 2.5 : 2,
           opacity: 1,
           fillOpacity: 0.9,
         });
+
+        const waterInfo = hasWater
+          ? `
+            <div class="mt-1 p-1.5 bg-cyan-50 border border-cyan-200 rounded text-[11px] text-cyan-900 font-medium">
+              💧 <b>Eau mesurée :</b> ${b.prof_eau_sol} m / sol
+              ${b.date_eau_sol ? `<span class="text-slate-500 text-[10px] block">Date : ${b.date_eau_sol}</span>` : ""}
+              ${b.cote_eau_calculee !== undefined && b.cote_eau_calculee !== null ? `<span class="text-cyan-800 font-mono text-[10px] block">Cote nappe : ${b.cote_eau_calculee} m NGF</span>` : ""}
+            </div>
+          `
+          : "";
 
         const content = `
           <div class="p-3 text-xs text-slate-800 font-sans max-w-xs">
             <div class="flex items-center justify-between mb-1">
               <span class="font-bold text-slate-900">Forage BSS (BRGM)</span>
-              ${hasCoupe ? '<span class="text-[10px] font-bold px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800">Coupe dispo</span>' : ""}
+              ${hasWater ? '<span class="text-[10px] font-bold px-1.5 py-0.5 rounded bg-cyan-100 text-cyan-800">Eau relevée</span>' : hasCoupe ? '<span class="text-[10px] font-bold px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800">Coupe dispo</span>' : ""}
             </div>
             <div class="font-mono text-slate-700 font-semibold">${b.reference}</div>
             <div class="text-slate-600 my-1">
               <b>Nature :</b> ${b.nature || "FORAGE"}<br/>
-              <b>Profondeur :</b> ${b.prof_atteinte !== undefined && b.prof_atteinte !== null ? `${b.prof_atteinte} m` : "n.d."}<br/>
-              <b>Distance :</b> ${Math.round(b.distance_meters)} m
+              <b>Profondeur atteinte :</b> ${b.prof_atteinte !== undefined && b.prof_atteinte !== null ? `${b.prof_atteinte} m` : "n.d."}<br/>
+              <b>Distance au site :</b> ${Math.round(b.distance_meters)} m
             </div>
+            ${waterInfo}
             <a href="${b.url_infoterre}" target="_blank" rel="noopener noreferrer" class="mt-2 inline-block text-[11px] font-semibold text-emerald-700 hover:text-emerald-900 underline">
               Consulter la fiche InfoTerre &rarr;
             </a>
@@ -559,15 +621,37 @@ export default function MapInner({
           </button>
         </div>
 
-        <label className="flex items-center gap-2 px-1 cursor-pointer select-none text-slate-700 font-medium">
-          <input
-            type="checkbox"
-            checked={showCadastreOverlay}
-            onChange={(e) => setShowCadastreOverlay(e.target.checked)}
-            className="rounded border-slate-300 text-[#1b4332] focus:ring-[#1b4332]"
-          />
-          Surcouche Cadastre (IGN)
-        </label>
+        <div className="pt-1 border-t border-slate-200/80 space-y-1.5">
+          <label className="flex items-center gap-2 px-1 cursor-pointer select-none text-slate-700 font-medium">
+            <input
+              type="checkbox"
+              checked={showCadastreOverlay}
+              onChange={(e) => setShowCadastreOverlay(e.target.checked)}
+              className="rounded border-slate-300 text-[#1b4332] focus:ring-[#1b4332]"
+            />
+            Surcouche Cadastre (IGN)
+          </label>
+
+          <label className="flex items-center gap-2 px-1 cursor-pointer select-none text-slate-700 font-medium">
+            <input
+              type="checkbox"
+              checked={showBdlisaOverlay}
+              onChange={(e) => setShowBdlisaOverlay(e.target.checked)}
+              className="rounded border-slate-300 text-cyan-700 focus:ring-cyan-700"
+            />
+            Aquifères (BDLISA)
+          </label>
+
+          <label className="flex items-center gap-2 px-1 cursor-pointer select-none text-slate-700 font-medium">
+            <input
+              type="checkbox"
+              checked={showRemnappeOverlay}
+              onChange={(e) => setShowRemnappeOverlay(e.target.checked)}
+              className="rounded border-slate-300 text-amber-700 focus:ring-amber-700"
+            />
+            Remontées de nappes (BRGM)
+          </label>
+        </div>
       </div>
     </div>
   );

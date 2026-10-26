@@ -16,6 +16,7 @@ from soil_up.services.ign_alti import IgnAltiConnector
 from soil_up.services.bss import BssConnector
 from soil_up.services.hubeau_piezo import HubeauPiezometrieConnector
 from soil_up.services.inpn import InpnConnector
+from soil_up.services.groundwater_level import GroundwaterLevelService
 from soil_up.services.report import ReportGeneratorService
 
 router = APIRouter(prefix="/api/studies", tags=["Studies"])
@@ -24,6 +25,7 @@ ign_alti_connector = IgnAltiConnector()
 bss_connector = BssConnector()
 hubeau_piezo_connector = HubeauPiezometrieConnector()
 inpn_connector = InpnConnector()
+groundwater_service = GroundwaterLevelService()
 report_service = ReportGeneratorService()
 
 @router.post("", response_model=StudyResponse, status_code=status.HTTP_201_CREATED)
@@ -148,6 +150,17 @@ async def collect_study_data(study_id: int, db: Session = Depends(get_db)):
             collected_data["zonages_naturels"] = [item.model_dump() for item in inpn_res.zonages]
             if inpn_res.error:
                 collected_data["errors"]["inpn"] = inpn_res.error
+
+        # 6. Estimation Hydrogéologique de la Nappe au droit du site
+        try:
+            gw_estimation = groundwater_service.estimate(
+                altimetrie=alti_res if not isinstance(alti_res, Exception) else None,
+                piezometrie=piezo_res if not isinstance(piezo_res, Exception) else None,
+                bss=bss_res if not isinstance(bss_res, Exception) else None,
+            )
+            collected_data["groundwater_level"] = gw_estimation.model_dump()
+        except Exception as gw_exc:
+            collected_data["errors"]["groundwater_level"] = str(gw_exc)
 
         has_errors = bool(collected_data["errors"])
         record.status = "partial_error" if has_errors else "completed"

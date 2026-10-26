@@ -8,6 +8,9 @@ class BssBoreholeItem(BaseModel):
     nature: Optional[str] = None
     prof_atteinte: Optional[float] = None
     zsol: Optional[float] = None
+    prof_eau_sol: Optional[float] = None
+    date_eau_sol: Optional[str] = None
+    cote_eau_calculee: Optional[float] = None
     coupe_disponible: bool = False
     nb_scans_coupe: int = 0
     url_infoterre: str

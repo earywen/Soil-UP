@@ -13,6 +13,9 @@ import {
   Trash2,
   RefreshCw,
   PenTool,
+  Droplets,
+  ChevronDown,
+  ChevronUp,
 } from "lucide-react";
 import {
   AddressResultItem,
@@ -77,6 +80,7 @@ export default function WorkflowPanel({
   const [isCreatingStudy, setIsCreatingStudy] = useState(false);
   const [isCollecting, setIsCollecting] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [showGwDetails, setShowGwDetails] = useState(false);
 
   const handleAddressChange = (val: string) => {
     setAddressQuery(val);
@@ -232,6 +236,7 @@ export default function WorkflowPanel({
   const piezoCount = study?.collected_data?.piezometrie?.length ?? 0;
   const natureCount = study?.collected_data?.zonages_naturels?.length ?? 0;
   const alti = study?.collected_data?.altimetrie;
+  const gw = study?.collected_data?.groundwater_level;
 
   return (
     <aside className="w-full h-full flex flex-col bg-slate-50 border-r border-slate-200 shadow-sm z-10 overflow-hidden">
@@ -585,6 +590,106 @@ export default function WorkflowPanel({
                 </div>
               </div>
             </div>
+
+            {/* Primary Hydrogeological Highlight: Groundwater Level at Study Site */}
+            {gw && gw.profondeur_estimee_m !== undefined && gw.profondeur_estimee_m !== null && (
+              <div className="p-3.5 bg-gradient-to-br from-cyan-50/70 via-white to-emerald-50/40 border-2 border-cyan-500/30 rounded-lg shadow-xs space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-1.5 text-xs font-bold text-cyan-950 uppercase tracking-wide">
+                    <Droplets className="h-4 w-4 text-cyan-700 animate-pulse" />
+                    <span>Nappe au droit du site</span>
+                  </div>
+                  <span
+                    className={`text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider ${
+                      gw.indice_confiance === "Élevé"
+                        ? "bg-emerald-100 text-emerald-800 border border-emerald-300"
+                        : gw.indice_confiance === "Moyen"
+                        ? "bg-amber-100 text-amber-800 border border-amber-300"
+                        : "bg-slate-100 text-slate-700 border border-slate-300"
+                    }`}
+                  >
+                    Confiance {gw.indice_confiance}
+                  </span>
+                </div>
+
+                <div className="flex items-baseline justify-between pt-0.5">
+                  <div>
+                    <span className="text-[11px] text-slate-500 font-medium block">Profondeur estimée sous le sol</span>
+                    <div className="text-2xl font-extrabold text-slate-900 tracking-tight tabular-nums flex items-baseline gap-1">
+                      <span>~ {gw.profondeur_estimee_m}</span>
+                      <span className="text-sm font-semibold text-slate-600">m / sol</span>
+                    </div>
+                  </div>
+                  {gw.cote_nappe_estimee_ngf !== undefined && gw.cote_nappe_estimee_ngf !== null && (
+                    <div className="text-right">
+                      <span className="text-[11px] text-slate-500 font-medium block">Cote piézométrique</span>
+                      <span className="text-sm font-bold font-mono text-cyan-900 tabular-nums">
+                        {gw.cote_nappe_estimee_ngf} m NGF
+                      </span>
+                    </div>
+                  )}
+                </div>
+
+                <div className="text-[11px] text-slate-600 flex items-center justify-between pt-1 border-t border-cyan-100">
+                  <span>
+                    Fourchette locale : <b>{gw.profondeur_min_m} m</b> à <b>{gw.profondeur_max_m} m</b>
+                  </span>
+                  {gw.altitude_site_ngf && (
+                    <span className="font-mono text-slate-500 text-[10px]">
+                      LiDAR site : {gw.altitude_site_ngf} m
+                    </span>
+                  )}
+                </div>
+
+                {gw.points_appui && gw.points_appui.length > 0 && (
+                  <div className="pt-0.5">
+                    <button
+                      type="button"
+                      onClick={() => setShowGwDetails(!showGwDetails)}
+                      className="text-[11px] text-cyan-800 hover:text-cyan-950 font-semibold flex items-center gap-1 cursor-pointer transition-colors"
+                    >
+                      <span>
+                        {showGwDetails ? "Masquer les points d'appui" : `Voir les ${gw.nb_points_appui} forages & piézos de référence`}
+                      </span>
+                      {showGwDetails ? (
+                        <ChevronUp className="h-3 w-3" />
+                      ) : (
+                        <ChevronDown className="h-3 w-3" />
+                      )}
+                    </button>
+
+                    {showGwDetails && (
+                      <div className="mt-2 space-y-1.5 max-h-36 overflow-y-auto pr-1">
+                        {gw.points_appui.map((pt, idx) => (
+                          <div
+                            key={`${pt.source}-${pt.identifiant}-${idx}`}
+                            className="p-1.5 bg-white rounded border border-cyan-200/60 text-[11px] flex items-center justify-between"
+                          >
+                            <div>
+                              <span className="font-mono font-bold text-slate-800">{pt.identifiant}</span>
+                              <span className="text-slate-500 text-[10px] ml-1.5">
+                                ({pt.source === "HUB_EAU" ? "Piézo ADES" : "Forage BSS"})
+                              </span>
+                              <div className="text-[10px] text-slate-600">
+                                {pt.prof_eau_sol !== undefined && pt.prof_eau_sol !== null
+                                  ? `Eau à ${pt.prof_eau_sol} m/sol`
+                                  : ""}{" "}
+                                {pt.cote_eau_ngf !== undefined && pt.cote_eau_ngf !== null
+                                  ? `(Cote ${pt.cote_eau_ngf} m NGF)`
+                                  : ""}
+                              </div>
+                            </div>
+                            <span className="font-mono text-slate-600 font-semibold text-[10px]">
+                              {Math.round(pt.distance_meters)} m
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* Topography & Subsoil details */}
             <div className="p-3 bg-white border border-slate-200 rounded-md space-y-2 text-xs">
