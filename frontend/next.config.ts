@@ -9,8 +9,6 @@ const nextConfig: NextConfig = {
     "soilup.earyhub.com",
     "*.earyhub.com",
   ],
-  cacheComponents: true,
-  partialPrefetching: true,
   async rewrites() {
     return [
       {
