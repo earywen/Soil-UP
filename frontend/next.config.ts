@@ -6,6 +6,8 @@ const nextConfig: NextConfig = {
     "192.168.1.185",
     "localhost",
     "127.0.0.1",
+    "soilup.earyhub.com",
+    "*.earyhub.com",
   ],
   cacheComponents: true,
   partialPrefetching: true,
