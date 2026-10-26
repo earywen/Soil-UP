@@ -69,6 +69,23 @@ async def test_collect_georisques_data_for_study():
     respx.get("https://data.geopf.fr/wfs/ows").mock(
         return_value=httpx.Response(200, json={"type": "FeatureCollection", "features": []})
     )
+    # Mock Sandre BDLISA WMS
+    respx.get("https://services.sandre.eaufrance.fr/geo/saq").mock(
+        return_value=httpx.Response(200, text="""<?xml version="1.0" encoding="UTF-8"?>
+<msGMLOutput xmlns:gml="http://www.opengis.net/gml">
+  <EntiteHydroGeol_FXX_layer>
+    <EntiteHydroGeol_FXX_feature>
+      <CodeEH>141AG05</CodeEH>
+      <LibelleEH>Calcaires et grès de Normandie</LibelleEH>
+      <OrdreAbsEH>25000</OrdreAbsEH>
+      <NiveauEH>3</NiveauEH>
+      <NatureEH>5</NatureEH>
+      <MilieuEH>1</MilieuEH>
+      <EtatEH>0</EtatEH>
+    </EntiteHydroGeol_FXX_feature>
+  </EntiteHydroGeol_FXX_layer>
+</msGMLOutput>""")
+    )
 
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         # 1. Create a study

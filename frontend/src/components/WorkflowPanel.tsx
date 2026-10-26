@@ -81,6 +81,7 @@ export default function WorkflowPanel({
   const [isCollecting, setIsCollecting] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [showGwDetails, setShowGwDetails] = useState(false);
+  const [showBdlisaPile, setShowBdlisaPile] = useState(false);
 
   const handleAddressChange = (val: string) => {
     setAddressQuery(val);
@@ -237,6 +238,7 @@ export default function WorkflowPanel({
   const natureCount = study?.collected_data?.zonages_naturels?.length ?? 0;
   const alti = study?.collected_data?.altimetrie;
   const gw = study?.collected_data?.groundwater_level;
+  const bdlisa = study?.collected_data?.bdlisa;
 
   return (
     <aside className="w-full h-full flex flex-col bg-slate-50 border-r border-slate-200 shadow-sm z-10 overflow-hidden">
@@ -250,7 +252,7 @@ export default function WorkflowPanel({
             <h1 className="text-base font-bold tracking-tight text-white leading-none">
               Soil&apos;UP
             </h1>
-            <span className="text-[11px] text-slate-400 font-medium">
+            <span className="text-xs text-slate-300 font-medium">
               Diagnostic SSP — Norme NF X 31-620
             </span>
           </div>
@@ -298,7 +300,7 @@ export default function WorkflowPanel({
                 placeholder="Ex: 14 rue de l'Industrie, Rouen..."
                 value={addressQuery}
                 onChange={(e) => handleAddressChange(e.target.value)}
-                className="w-full pl-9 pr-8 py-2 text-sm bg-white border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#1b4332] focus:border-transparent transition-shadow text-slate-900"
+                className="w-full pl-9 pr-8 py-2 text-sm bg-white border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#1b4332] focus:border-transparent transition-shadow text-slate-900 placeholder:text-slate-500"
               />
               {isSearchingAddress && (
                 <Loader2 className="absolute right-3 h-4 w-4 animate-spin text-slate-400" />
@@ -682,6 +684,105 @@ export default function WorkflowPanel({
                             <span className="font-mono text-slate-600 font-semibold text-[10px]">
                               {Math.round(pt.distance_meters)} m
                             </span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Hydrogeological Entity BDLISA (Sandre / BRGM) */}
+            {bdlisa && (bdlisa.aquifere_superficiel || bdlisa.formation_affleurante) && (
+              <div className="p-3.5 bg-gradient-to-br from-slate-50 via-white to-cyan-50/30 border border-cyan-200 rounded-lg shadow-xs space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-1.5 text-xs font-bold text-cyan-950 uppercase tracking-wide">
+                    <Droplets className="h-4 w-4 text-cyan-700" />
+                    <span>Aquifère BDLISA (Sandre / BRGM)</span>
+                  </div>
+                  <span className="font-mono text-[10px] bg-cyan-100 text-cyan-900 px-2 py-0.5 rounded-full font-bold">
+                    {(bdlisa.aquifere_superficiel || bdlisa.formation_affleurante)?.code_eh}
+                  </span>
+                </div>
+
+                <div>
+                  <span className="text-[10px] text-slate-500 font-medium block uppercase tracking-wider">
+                    {bdlisa.aquifere_superficiel ? "Aquifère superficiel sous le site" : "Formation géologique affleurante"}
+                  </span>
+                  <div className="text-xs font-bold text-slate-900 leading-snug mt-0.5">
+                    {(bdlisa.aquifere_superficiel || bdlisa.formation_affleurante)?.libelle_eh}
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-1.5 text-[11px]">
+                  <div className="p-2 bg-slate-50 rounded border border-slate-200">
+                    <span className="text-slate-500 block text-[10px] uppercase tracking-wide">Nature</span>
+                    <span className="font-semibold text-slate-900">
+                      {(bdlisa.aquifere_superficiel || bdlisa.formation_affleurante)?.nature_libelle}
+                    </span>
+                  </div>
+                  <div className="p-2 bg-slate-50 rounded border border-slate-200">
+                    <span className="text-slate-500 block text-[10px] uppercase tracking-wide">Milieu</span>
+                    <span className="font-semibold text-slate-900">
+                      {(bdlisa.aquifere_superficiel || bdlisa.formation_affleurante)?.milieu_libelle}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="p-2 bg-cyan-50/70 rounded border border-cyan-200 text-[11px] text-cyan-950">
+                  <span className="text-cyan-800 font-semibold block text-[10px] uppercase tracking-wide">Régime de nappe</span>
+                  <span className="font-medium">
+                    {(bdlisa.aquifere_superficiel || bdlisa.formation_affleurante)?.etat_libelle}
+                  </span>
+                </div>
+
+                {bdlisa.karst && (
+                  <div className="p-2 bg-amber-50 rounded border border-amber-300 text-[11px] text-amber-950">
+                    <b className="text-amber-800 font-bold">⚠️ Alerte Karst :</b> {bdlisa.karst.libelle_zk} ({bdlisa.karst.situation})
+                  </div>
+                )}
+
+                {bdlisa.formations && bdlisa.formations.length > 0 && (
+                  <div className="pt-0.5">
+                    <button
+                      type="button"
+                      onClick={() => setShowBdlisaPile(!showBdlisaPile)}
+                      className="text-[11px] text-cyan-800 hover:text-cyan-950 font-semibold flex items-center gap-1 cursor-pointer transition-colors"
+                    >
+                      <span>
+                        {showBdlisaPile
+                          ? "Masquer la pile géologique"
+                          : `Voir la succession stratigraphique (${bdlisa.formations.length} formations)`}
+                      </span>
+                      {showBdlisaPile ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+                    </button>
+
+                    {showBdlisaPile && (
+                      <div className="mt-2 space-y-1.5 max-h-44 overflow-y-auto pr-1">
+                        {bdlisa.formations.map((f, idx) => (
+                          <div
+                            key={`${f.code_eh}-${idx}`}
+                            className="p-2 bg-white rounded border border-slate-200 text-[11px] space-y-0.5 shadow-2xs"
+                          >
+                            <div className="flex items-center justify-between">
+                              <span className="font-mono font-bold text-slate-800 text-[10px]">{f.code_eh}</span>
+                              <span
+                                className={`text-[9px] px-1.5 py-0.2 rounded font-semibold ${
+                                  f.est_aquifere
+                                    ? "bg-emerald-100 text-emerald-800 border border-emerald-200"
+                                    : "bg-slate-100 text-slate-700"
+                                }`}
+                              >
+                                {f.est_aquifere ? "Aquifère" : "Imperméable / Semi"}
+                              </span>
+                            </div>
+                            <div className="text-slate-800 font-medium text-[11px] leading-tight">
+                              {f.libelle_eh}
+                            </div>
+                            <div className="text-slate-500 text-[10px]">
+                              {f.milieu_libelle} • {f.etat_libelle}
+                            </div>
                           </div>
                         ))}
                       </div>

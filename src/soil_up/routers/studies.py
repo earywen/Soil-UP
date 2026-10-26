@@ -16,6 +16,7 @@ from soil_up.services.ign_alti import IgnAltiConnector
 from soil_up.services.bss import BssConnector
 from soil_up.services.hubeau_piezo import HubeauPiezometrieConnector
 from soil_up.services.inpn import InpnConnector
+from soil_up.services.bdlisa import BdlisaConnector
 from soil_up.services.groundwater_level import GroundwaterLevelService
 from soil_up.services.report import ReportGeneratorService
 
@@ -25,6 +26,7 @@ ign_alti_connector = IgnAltiConnector()
 bss_connector = BssConnector()
 hubeau_piezo_connector = HubeauPiezometrieConnector()
 inpn_connector = InpnConnector()
+bdlisa_connector = BdlisaConnector()
 groundwater_service = GroundwaterLevelService()
 report_service = ReportGeneratorService()
 
@@ -95,10 +97,11 @@ async def collect_study_data(study_id: int, db: Session = Depends(get_db)):
             bss_connector.collect(record.emprise, record.buffer_meters),
             hubeau_piezo_connector.collect(record.emprise, record.buffer_meters),
             inpn_connector.collect(record.emprise, record.buffer_meters),
+            bdlisa_connector.collect(record.emprise, record.buffer_meters),
         ]
         results = await asyncio.gather(*tasks, return_exceptions=True)
 
-        geo_res, alti_res, bss_res, piezo_res, inpn_res = results
+        geo_res, alti_res, bss_res, piezo_res, inpn_res, bdlisa_res = results
 
         collected_data = {
             "casias": [],
@@ -107,6 +110,7 @@ async def collect_study_data(study_id: int, db: Session = Depends(get_db)):
             "bss": [],
             "piezometrie": [],
             "zonages_naturels": [],
+            "bdlisa": None,
             "errors": {},
         }
 
@@ -151,7 +155,15 @@ async def collect_study_data(study_id: int, db: Session = Depends(get_db)):
             if inpn_res.error:
                 collected_data["errors"]["inpn"] = inpn_res.error
 
-        # 6. Estimation Hydrogéologique de la Nappe au droit du site
+        # 6. BDLISA (Hydrogéologie de référence Sandre / BRGM)
+        if isinstance(bdlisa_res, Exception):
+            collected_data["errors"]["bdlisa"] = str(bdlisa_res)
+        elif bdlisa_res:
+            collected_data["bdlisa"] = bdlisa_res.model_dump()
+            if bdlisa_res.error:
+                collected_data["errors"]["bdlisa"] = bdlisa_res.error
+
+        # 7. Estimation Hydrogéologique de la Nappe au droit du site
         try:
             gw_estimation = groundwater_service.estimate(
                 altimetrie=alti_res if not isinstance(alti_res, Exception) else None,

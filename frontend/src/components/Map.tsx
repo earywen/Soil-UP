@@ -8,6 +8,7 @@ import {
   IcpeItem,
   BssBoreholeItem,
   PiezometreItem,
+  BdlisaResult,
   GeoJsonObject,
 } from "@/types";
 
@@ -23,6 +24,7 @@ interface MapProps {
   icpeSites: IcpeItem[];
   bssBoreholes?: BssBoreholeItem[];
   piezometres?: PiezometreItem[];
+  bdlisaData?: BdlisaResult | null;
   onMapClick?: (lat: number, lon: number) => void;
   isDrawingMode?: boolean;
   onToggleDrawingMode?: (active: boolean) => void;

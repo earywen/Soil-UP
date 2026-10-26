@@ -5,10 +5,13 @@ from soil_up.schemas.cadastre import (
     CustomEmpriseRequest,
     SiteEmpriseResult,
 )
+from soil_up.schemas.bdlisa import BdlisaResult
 from soil_up.services.cadastre import IgnCadastreService
+from soil_up.services.bdlisa import BdlisaConnector
 
 router = APIRouter(prefix="/api/cadastre", tags=["Cadastre"])
 cadastre_service = IgnCadastreService()
+bdlisa_connector = BdlisaConnector()
 
 @router.get("/parcels", response_model=CadastralParcelCollection)
 async def get_parcels(
@@ -40,3 +43,16 @@ async def compute_custom_emprise(payload: CustomEmpriseRequest):
         raise HTTPException(status_code=400, detail=str(ve))
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"Erreur lors du calcul de l'emprise libre : {exc}")
+
+@router.get("/bdlisa", response_model=BdlisaResult)
+async def get_bdlisa_entity(
+    lat: float = Query(..., ge=-90.0, le=90.0, description="Latitude en WGS84"),
+    lon: float = Query(..., ge=-180.0, le=180.0, description="Longitude en WGS84"),
+):
+    try:
+        return await bdlisa_connector.query_point(lat=lat, lon=lon)
+    except Exception as exc:
+        raise HTTPException(
+            status_code=502,
+            detail=f"Erreur lors de la récupération des données hydrogéologiques BDLISA : {exc}"
+        )

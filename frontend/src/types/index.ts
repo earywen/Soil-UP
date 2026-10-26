@@ -156,6 +156,37 @@ export interface ZonageNaturelItem {
   url_fiche: string;
 }
 
+export interface BdlisaEntity {
+  code_eh: string;
+  libelle_eh: string;
+  ordre_abs?: number;
+  niveau_eh?: number;
+  nature_code?: string;
+  nature_libelle: string;
+  milieu_code?: string;
+  milieu_libelle: string;
+  etat_code?: string;
+  etat_libelle: string;
+  est_aquifere: boolean;
+  est_affleurant: boolean;
+}
+
+export interface BdlisaKarst {
+  code_zk: string;
+  libelle_zk: string;
+  situation: string;
+}
+
+export interface BdlisaResult {
+  aquifere_superficiel?: BdlisaEntity | null;
+  formation_affleurante?: BdlisaEntity | null;
+  formations: BdlisaEntity[];
+  karst?: BdlisaKarst | null;
+  nb_formations: number;
+  source: string;
+  error?: string | null;
+}
+
 export interface CollectedData {
   casias?: CasiasItem[];
   icpe?: IcpeItem[];
@@ -164,6 +195,7 @@ export interface CollectedData {
   piezometrie?: PiezometreItem[];
   groundwater_level?: GroundwaterLevelEstimation;
   zonages_naturels?: ZonageNaturelItem[];
+  bdlisa?: BdlisaResult | null;
   errors?: Record<string, string>;
   error?: string;
 }

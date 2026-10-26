@@ -128,6 +128,7 @@ export default function Home() {
   const icpeSites = study?.collected_data?.icpe || [];
   const bssBoreholes = study?.collected_data?.bss || [];
   const piezometres = study?.collected_data?.piezometrie || [];
+  const bdlisaData = study?.collected_data?.bdlisa || null;
 
   return (
     <main className="h-screen w-screen flex flex-row overflow-hidden bg-slate-100">
@@ -165,6 +166,7 @@ export default function Home() {
           icpeSites={icpeSites}
           bssBoreholes={bssBoreholes}
           piezometres={piezometres}
+          bdlisaData={bdlisaData}
           onMapClick={handleMapClick}
           isDrawingMode={isDrawingMode}
           onToggleDrawingMode={setIsDrawingMode}

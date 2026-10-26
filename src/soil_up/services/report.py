@@ -139,6 +139,57 @@ class ReportGeneratorService:
         else:
             doc.add_paragraph("Données altimétriques non disponibles pour ce secteur.")
 
+        # Entités Hydrogéologiques BDLISA (Sandre / BRGM)
+        bdlisa = collected_data.get("bdlisa")
+        p_bdlisa = doc.add_paragraph()
+        p_bdlisa.add_run("Référentiel Hydrogéologique BDLISA (Sandre / BRGM) : ").bold = True
+        if bdlisa and bdlisa.get("formations"):
+            aq_sup = bdlisa.get("aquifere_superficiel")
+            affl = bdlisa.get("formation_affleurante")
+            if aq_sup:
+                p_bdlisa.add_run(
+                    f"L'aquifère superficiel identifié au droit du site est l'entité BDLISA n°{aq_sup.get('code_eh')} : "
+                    f"« {aq_sup.get('libelle_eh')} ».\n"
+                    f"• Nature géologique : {aq_sup.get('nature_libelle')}\n"
+                    f"• Type de milieu : {aq_sup.get('milieu_libelle')}\n"
+                    f"• Régime d'écoulement : {aq_sup.get('etat_libelle')}."
+                )
+            elif affl:
+                p_bdlisa.add_run(
+                    f"Formation affleurante identifiée au droit du site : {affl.get('code_eh')} - « {affl.get('libelle_eh')} » "
+                    f"({affl.get('nature_libelle')}, {affl.get('milieu_libelle')})."
+                )
+
+            # Karst éventuel
+            karst = bdlisa.get("karst")
+            if karst:
+                p_karst = doc.add_paragraph()
+                p_karst.add_run("Alerte Karst : ").bold = True
+                p_karst.add_run(f"Présence répertoriée d'une formation karstifiée ({karst.get('code_zk')}, {karst.get('situation')}).")
+
+            # Tableau de la succession hydrogéologique
+            p_bdlisa_tbl = doc.add_paragraph()
+            p_bdlisa_tbl.add_run("Succession de la pile hydrogéologique BDLISA (du haut vers le bas) :").italic = True
+            b_table = doc.add_table(rows=1, cols=4)
+            b_table.alignment = WD_TABLE_ALIGNMENT.CENTER
+            b_table.style = "Table Grid"
+            b_headers = ["Code BDLISA", "Entité Hydrogéologique", "Nature", "Milieu & État"]
+            for col_idx, htext in enumerate(b_headers):
+                cell = b_table.cell(0, col_idx)
+                cell.text = htext
+                cell.paragraphs[0].runs[0].font.bold = True
+
+            for f_item in bdlisa.get("formations", [])[:6]:
+                row_cells = b_table.add_row().cells
+                row_cells[0].text = str(f_item.get("code_eh", "-"))
+                row_cells[1].text = str(f_item.get("libelle_eh", "-"))
+                row_cells[2].text = str(f_item.get("nature_libelle", "-"))
+                row_cells[3].text = f"{f_item.get('milieu_libelle', '')} ({f_item.get('etat_libelle', '')})"
+        else:
+            p_bdlisa.add_run("Aucune donnée BDLISA disponible pour ce secteur.")
+
+        doc.add_paragraph()
+
         # Hydrogéologie & Piézomètres
         piezo_list = collected_data.get("piezometrie", [])
         p_piezo_title = doc.add_paragraph()

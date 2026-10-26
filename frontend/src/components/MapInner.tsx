@@ -8,9 +8,11 @@ import {
   IcpeItem,
   BssBoreholeItem,
   PiezometreItem,
+  BdlisaResult,
   GeoJsonObject,
 } from "@/types";
-import { PenTool, Undo2, Check, MousePointer } from "lucide-react";
+import { fetchBdlisaEntity } from "@/lib/api";
+import { PenTool, Undo2, Check, MousePointer, Droplets, Layers } from "lucide-react";
 
 interface MapInnerProps {
   center: [number, number]; // [lat, lon]
@@ -24,6 +26,7 @@ interface MapInnerProps {
   icpeSites: IcpeItem[];
   bssBoreholes?: BssBoreholeItem[];
   piezometres?: PiezometreItem[];
+  bdlisaData?: BdlisaResult | null;
   onMapClick?: (lat: number, lon: number) => void;
   isDrawingMode?: boolean;
   onToggleDrawingMode?: (active: boolean) => void;
@@ -42,6 +45,7 @@ export default function MapInner({
   icpeSites,
   bssBoreholes = [],
   piezometres = [],
+  bdlisaData,
   onMapClick,
   isDrawingMode = false,
   onToggleDrawingMode,
@@ -54,6 +58,7 @@ export default function MapInner({
   const [activeBasemap, setActiveBasemap] = useState<"osm" | "ortho">("osm");
   const [showCadastreOverlay, setShowCadastreOverlay] = useState<boolean>(true);
   const [showBdlisaOverlay, setShowBdlisaOverlay] = useState<boolean>(false);
+  const [showGeolOverlay, setShowGeolOverlay] = useState<boolean>(false);
   const [showRemnappeOverlay, setShowRemnappeOverlay] = useState<boolean>(false);
 
   // Freehand drawing state
@@ -65,6 +70,7 @@ export default function MapInner({
   const orthoTileLayerRef = useRef<L.TileLayer | null>(null);
   const cadastreWMTSRef = useRef<L.TileLayer | null>(null);
   const bdlisaWmsRef = useRef<L.TileLayer.WMS | null>(null);
+  const geolWmsRef = useRef<L.TileLayer.WMS | null>(null);
   const remnappeWmsRef = useRef<L.TileLayer.WMS | null>(null);
   const parcelsLayerGroupRef = useRef<L.LayerGroup | null>(null);
   const empriseLayerGroupRef = useRef<L.LayerGroup | null>(null);
@@ -114,11 +120,20 @@ export default function MapInner({
       layers: "EntiteHydroGeol_FXX",
       format: "image/png",
       transparent: true,
-      opacity: 0.6,
-      attribution: '&copy; <a href="https://bdlisa.eaufrance.fr/">Sandre / BRGM (BDLISA)</a>',
+      opacity: 0.85,
+      attribution: '&copy; <a href="https://bdlisa.eaufrance.fr/">Sandre / BRGM (BDLISA v3)</a>',
     });
 
-    // 5. Remontées de Nappes WMS Layer (BRGM)
+    // 5. Carte Géologique BRGM (1/50 000) WMS Layer
+    const geolLayer = L.tileLayer.wms("https://geoservices.brgm.fr/geologie", {
+      layers: "SCAN_D_GEOL50",
+      format: "image/png",
+      transparent: true,
+      opacity: 0.75,
+      attribution: '&copy; <a href="https://infoterre.brgm.fr/">BRGM (Carte géologique 1/50 000)</a>',
+    });
+
+    // 6. Remontées de Nappes WMS Layer (BRGM)
     const remnappeLayer = L.tileLayer.wms("https://geoservices.brgm.fr/risques", {
       layers: "REMNAPPE",
       format: "image/png",
@@ -134,6 +149,7 @@ export default function MapInner({
     orthoTileLayerRef.current = orthoLayer;
     cadastreWMTSRef.current = cadastreLayer;
     bdlisaWmsRef.current = bdlisaLayer;
+    geolWmsRef.current = geolLayer;
     remnappeWmsRef.current = remnappeLayer;
 
     // Controls
@@ -155,7 +171,7 @@ export default function MapInner({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Map Click Listener (Direct parcel selection OR Drawing vertex)
+  // Map Click Listener (Direct parcel selection OR Drawing vertex OR BDLISA Inspection)
   useEffect(() => {
     const map = mapInstanceRef.current;
     if (!map) return;
@@ -170,7 +186,93 @@ export default function MapInner({
     const handleClick = (e: L.LeafletMouseEvent) => {
       if (isDrawingMode) {
         setDrawingPoints((prev) => [...prev, e.latlng]);
-      } else if (onMapClick) {
+        return;
+      }
+
+      // If BDLISA overlay is active, inspect the aquifer at the clicked location
+      if (showBdlisaOverlay) {
+        const popup = L.popup({ maxWidth: 380, className: "soilup-bdlisa-popup" })
+          .setLatLng(e.latlng)
+          .setContent(`
+            <div class="p-3 text-xs text-slate-700 font-sans flex items-center gap-2">
+              <div class="h-3.5 w-3.5 border-2 border-cyan-700 border-t-transparent rounded-full animate-spin"></div>
+              <span>Interrogation de l'aquifère BDLISA...</span>
+            </div>
+          `)
+          .openOn(map);
+
+        fetchBdlisaEntity(e.latlng.lat, e.latlng.lng)
+          .then((data) => {
+            const aq = data.aquifere_superficiel || data.formation_affleurante;
+            if (!aq) {
+              popup.setContent(`
+                <div class="p-3 text-xs text-slate-600 font-sans">
+                  <div class="font-bold text-slate-800 mb-1">BDLISA (Sandre / BRGM)</div>
+                  <div class="text-slate-500">Aucune entité hydrogéologique recensée à ce point.</div>
+                </div>
+              `);
+              return;
+            }
+
+            popup.setContent(`
+              <div class="p-3.5 text-xs text-slate-800 font-sans max-w-sm">
+                <div class="flex items-center justify-between gap-2 border-b border-slate-100 pb-2 mb-2">
+                  <div class="flex items-center gap-1.5 text-cyan-900 font-bold">
+                    <span class="text-sm">💧</span>
+                    <span>Aquifère BDLISA (Sandre)</span>
+                  </div>
+                  <span class="font-mono text-[10px] bg-cyan-100 text-cyan-900 px-2 py-0.5 rounded-full font-bold">
+                    ${aq.code_eh}
+                  </span>
+                </div>
+
+                <div class="font-bold text-slate-900 text-[13px] mb-2.5 leading-snug">
+                  ${aq.libelle_eh}
+                </div>
+
+                <div class="grid grid-cols-2 gap-1.5 mb-2.5 text-[11px]">
+                  <div class="p-2 bg-slate-50 rounded border border-slate-200">
+                    <span class="text-slate-500 block text-[10px] uppercase tracking-wide">Nature</span>
+                    <span class="font-semibold text-slate-900">${aq.nature_libelle}</span>
+                  </div>
+                  <div class="p-2 bg-slate-50 rounded border border-slate-200">
+                    <span class="text-slate-500 block text-[10px] uppercase tracking-wide">Milieu</span>
+                    <span class="font-semibold text-slate-900">${aq.milieu_libelle}</span>
+                  </div>
+                </div>
+
+                <div class="p-2 bg-cyan-50/70 rounded border border-cyan-200 text-[11px] text-cyan-950 mb-2">
+                  <span class="text-cyan-800 font-semibold block text-[10px] uppercase tracking-wide">Régime de nappe</span>
+                  <span class="font-medium">${aq.etat_libelle}</span>
+                </div>
+
+                ${
+                  data.karst
+                    ? `
+                  <div class="p-2 bg-amber-50 rounded border border-amber-300 text-[11px] text-amber-950 mb-2">
+                    <b class="text-amber-800 font-bold">⚠️ Alerte Karst :</b> ${data.karst.libelle_zk} (${data.karst.situation})
+                  </div>
+                `
+                    : ""
+                }
+
+                <div class="text-[10px] text-slate-500 flex items-center justify-between pt-1.5 border-t border-slate-100">
+                  <span><b>${data.nb_formations}</b> formation(s) dans la pile</span>
+                  <span class="font-semibold text-cyan-800">Sandre BDLISA v3</span>
+                </div>
+              </div>
+            `);
+          })
+          .catch(() => {
+            popup.setContent(`
+              <div class="p-3 text-xs text-red-700 font-sans">
+                Échec de communication avec le serveur Sandre BDLISA.
+              </div>
+            `);
+          });
+      }
+
+      if (onMapClick) {
         onMapClick(e.latlng.lat, e.latlng.lng);
       }
     };
@@ -179,7 +281,7 @@ export default function MapInner({
     return () => {
       map.off("click", handleClick);
     };
-  }, [isDrawingMode, onMapClick]);
+  }, [isDrawingMode, onMapClick, showBdlisaOverlay]);
 
   // Render Drawing in progress
   useEffect(() => {
@@ -282,6 +384,19 @@ export default function MapInner({
       if (map.hasLayer(bdlisaLayer)) map.removeLayer(bdlisaLayer);
     }
   }, [showBdlisaOverlay]);
+
+  // Toggle Carte Géologique 1/50k BRGM Overlay
+  useEffect(() => {
+    const map = mapInstanceRef.current;
+    const geolLayer = geolWmsRef.current;
+    if (!map || !geolLayer) return;
+
+    if (showGeolOverlay) {
+      if (!map.hasLayer(geolLayer)) geolLayer.addTo(map);
+    } else {
+      if (map.hasLayer(geolLayer)) map.removeLayer(geolLayer);
+    }
+  }, [showGeolOverlay]);
 
   // Toggle Remontée de Nappes Overlay
   useEffect(() => {
@@ -588,7 +703,7 @@ export default function MapInner({
             <PenTool className="h-3.5 w-3.5" />
             Tracer un polygone
           </button>
-          <span className="text-[11px] text-slate-500 px-2 flex items-center gap-1">
+          <span className="text-xs text-slate-500 px-2 flex items-center gap-1">
             <MousePointer className="h-3 w-3" /> Clic sur carte pour cadastre
           </span>
         </div>
@@ -639,7 +754,22 @@ export default function MapInner({
               onChange={(e) => setShowBdlisaOverlay(e.target.checked)}
               className="rounded border-slate-300 text-cyan-700 focus:ring-cyan-700"
             />
-            Aquifères (BDLISA)
+            <span className="flex items-center justify-between flex-1 gap-1.5">
+              <span>Aquifères (BDLISA)</span>
+              <span className="text-[11px] bg-cyan-100 text-cyan-800 px-2 py-0.5 rounded-full font-semibold">
+                Interactif
+              </span>
+            </span>
+          </label>
+
+          <label className="flex items-center gap-2 px-1 cursor-pointer select-none text-slate-700 font-medium">
+            <input
+              type="checkbox"
+              checked={showGeolOverlay}
+              onChange={(e) => setShowGeolOverlay(e.target.checked)}
+              className="rounded border-slate-300 text-purple-700 focus:ring-purple-700"
+            />
+            <span>Carte Géologique 1/50k (BRGM)</span>
           </label>
 
           <label className="flex items-center gap-2 px-1 cursor-pointer select-none text-slate-700 font-medium">
@@ -653,6 +783,41 @@ export default function MapInner({
           </label>
         </div>
       </div>
+
+      {/* Floating Bottom Help Banner for BDLISA Mode */}
+      {showBdlisaOverlay && (
+        <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-1000 bg-white/95 backdrop-blur-xs px-4 py-2 rounded-full shadow-lg border border-cyan-500/40 text-xs font-sans text-cyan-950 flex items-center gap-2.5 pointer-events-none animate-in fade-in slide-in-from-bottom-2 duration-200">
+          <span className="h-2.5 w-2.5 rounded-full bg-cyan-600 animate-pulse shrink-0" />
+          <span>
+            <b>Mode Aquifères BDLISA actif :</b> Cliquez sur la carte pour révéler l&apos;aquifère et sa pile stratigraphique
+          </span>
+        </div>
+      )}
+
+      {/* Floating Site Aquifer Summary Chip (Bottom-Left) */}
+      {bdlisaData && (bdlisaData.aquifere_superficiel || bdlisaData.formation_affleurante) && (
+        <div className="absolute bottom-6 left-4 z-1000 bg-white/95 backdrop-blur-xs p-3 rounded-lg shadow-md border border-cyan-300/80 text-xs font-sans max-w-sm hidden md:block animate-in fade-in slide-in-from-bottom-2 duration-200">
+          <div className="flex items-center justify-between gap-2 mb-1">
+            <div className="flex items-center gap-1.5 text-cyan-950 font-bold">
+              <Droplets className="h-3.5 w-3.5 text-cyan-700" />
+              <span>Nappe au droit du site :</span>
+            </div>
+            <span className="font-mono text-[10px] bg-cyan-100 text-cyan-900 px-1.5 py-0.5 rounded font-bold">
+              {(bdlisaData.aquifere_superficiel || bdlisaData.formation_affleurante)?.code_eh}
+            </span>
+          </div>
+          <div className="text-[11px] text-slate-800 font-semibold line-clamp-1">
+            {(bdlisaData.aquifere_superficiel || bdlisaData.formation_affleurante)?.libelle_eh}
+          </div>
+          <div className="text-[10px] text-slate-600 mt-1 flex items-center gap-1.5">
+            <span className="text-cyan-800 font-medium">
+              {(bdlisaData.aquifere_superficiel || bdlisaData.formation_affleurante)?.nature_libelle}
+            </span>
+            <span>•</span>
+            <span>{(bdlisaData.aquifere_superficiel || bdlisaData.formation_affleurante)?.milieu_libelle}</span>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
