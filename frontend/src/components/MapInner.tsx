@@ -221,7 +221,7 @@ export default function MapInner({
                     <span class="text-sm">💧</span>
                     <span>Aquifère BDLISA (Sandre)</span>
                   </div>
-                  <span class="font-mono text-[10px] bg-cyan-100 text-cyan-900 px-2 py-0.5 rounded-full font-bold">
+                  <span class="font-mono text-[11px] bg-cyan-100 text-cyan-900 px-2 py-0.5 rounded-full font-bold">
                     ${aq.code_eh}
                   </span>
                 </div>
@@ -232,17 +232,17 @@ export default function MapInner({
 
                 <div class="grid grid-cols-2 gap-1.5 mb-2.5 text-[11px]">
                   <div class="p-2 bg-slate-50 rounded border border-slate-200">
-                    <span class="text-slate-500 block text-[10px] uppercase tracking-wide">Nature</span>
+                    <span class="text-slate-500 block text-[11px] uppercase tracking-wide">Nature</span>
                     <span class="font-semibold text-slate-900">${aq.nature_libelle}</span>
                   </div>
                   <div class="p-2 bg-slate-50 rounded border border-slate-200">
-                    <span class="text-slate-500 block text-[10px] uppercase tracking-wide">Milieu</span>
+                    <span class="text-slate-500 block text-[11px] uppercase tracking-wide">Milieu</span>
                     <span class="font-semibold text-slate-900">${aq.milieu_libelle}</span>
                   </div>
                 </div>
 
                 <div class="p-2 bg-cyan-50/70 rounded border border-cyan-200 text-[11px] text-cyan-950 mb-2">
-                  <span class="text-cyan-800 font-semibold block text-[10px] uppercase tracking-wide">Régime de nappe</span>
+                  <span class="text-cyan-800 font-semibold block text-[11px] uppercase tracking-wide">Régime de nappe</span>
                   <span class="font-medium">${aq.etat_libelle}</span>
                 </div>
 
@@ -256,7 +256,7 @@ export default function MapInner({
                     : ""
                 }
 
-                <div class="text-[10px] text-slate-500 flex items-center justify-between pt-1.5 border-t border-slate-100">
+                <div class="text-[11px] text-slate-500 flex items-center justify-between pt-1.5 border-t border-slate-100">
                   <span><b>${data.nb_formations}</b> formation(s) dans la pile</span>
                   <span class="font-semibold text-cyan-800">Sandre BDLISA v3</span>
                 </div>
@@ -598,27 +598,39 @@ export default function MapInner({
           ? `
             <div class="mt-1 p-1.5 bg-cyan-50 border border-cyan-200 rounded text-[11px] text-cyan-900 font-medium">
               💧 <b>Eau mesurée :</b> ${b.prof_eau_sol} m / sol
-              ${b.date_eau_sol ? `<span class="text-slate-500 text-[10px] block">Date : ${b.date_eau_sol}</span>` : ""}
-              ${b.cote_eau_calculee !== undefined && b.cote_eau_calculee !== null ? `<span class="text-cyan-800 font-mono text-[10px] block">Cote nappe : ${b.cote_eau_calculee} m NGF</span>` : ""}
+              ${b.date_eau_sol ? `<span class="text-slate-600 text-[11px] block">Date : ${b.date_eau_sol}</span>` : ""}
+              ${b.cote_eau_calculee !== undefined && b.cote_eau_calculee !== null ? `<span class="text-cyan-800 font-mono text-[11px] block font-semibold">Cote nappe : ${b.cote_eau_calculee} m NGF</span>` : ""}
+            </div>
+          `
+          : "";
+
+        const coupeInfo = hasCoupe
+          ? `
+            <div class="mt-1 p-1.5 bg-emerald-50 border border-emerald-200 rounded text-[11px] text-emerald-950 font-medium">
+              📑 <b>Coupe géologique numérisée disponible</b>
+              ${b.auteur_coupe ? `<span class="text-slate-600 text-[11px] block">Auteur : ${b.auteur_coupe}</span>` : ""}
+              ${b.date_coupe ? `<span class="text-slate-600 text-[11px] block">Date : ${b.date_coupe}</span>` : ""}
             </div>
           `
           : "";
 
         const content = `
-          <div class="p-3 text-xs text-slate-800 font-sans max-w-xs">
+          <div class="p-3 text-xs text-slate-800 font-sans max-w-xs space-y-1">
             <div class="flex items-center justify-between mb-1">
               <span class="font-bold text-slate-900">Forage BSS (BRGM)</span>
-              ${hasWater ? '<span class="text-[10px] font-bold px-1.5 py-0.5 rounded bg-cyan-100 text-cyan-800">Eau relevée</span>' : hasCoupe ? '<span class="text-[10px] font-bold px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800">Coupe dispo</span>' : ""}
+              ${hasWater ? '<span class="text-[11px] font-bold px-1.5 py-0.5 rounded bg-cyan-100 text-cyan-900 border border-cyan-300">Eau relevée</span>' : hasCoupe ? '<span class="text-[11px] font-bold px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-900 border border-emerald-300">Coupe numérisée</span>' : ""}
             </div>
-            <div class="font-mono text-slate-700 font-semibold">${b.reference}</div>
-            <div class="text-slate-600 my-1">
+            <div class="font-mono text-slate-800 font-bold">${b.reference}</div>
+            <div class="text-slate-700 text-[11px] leading-relaxed">
               <b>Nature :</b> ${b.nature || "FORAGE"}<br/>
               <b>Profondeur atteinte :</b> ${b.prof_atteinte !== undefined && b.prof_atteinte !== null ? `${b.prof_atteinte} m` : "n.d."}<br/>
+              ${b.lieu_dit ? `<b>Lieu-dit :</b> ${b.lieu_dit}<br/>` : ""}
               <b>Distance au site :</b> ${Math.round(b.distance_meters)} m
             </div>
             ${waterInfo}
-            <a href="${b.url_infoterre}" target="_blank" rel="noopener noreferrer" class="mt-2 inline-block text-[11px] font-semibold text-emerald-700 hover:text-emerald-900 underline">
-              Consulter la fiche InfoTerre &rarr;
+            ${coupeInfo}
+            <a href="${b.url_infoterre}" target="_blank" rel="noopener noreferrer" class="mt-2 inline-flex items-center gap-1 text-[11px] font-semibold text-[#1b4332] hover:text-[#2d6a4f] underline">
+              ${hasCoupe ? "Consulter la coupe sur InfoTerre &rarr;" : "Consulter la fiche InfoTerre &rarr;"}
             </a>
           </div>
         `;
@@ -651,7 +663,7 @@ export default function MapInner({
               <b>Cote piézométrique :</b> ${coteStr}<br/>
               <b>Distance :</b> ${Math.round(pz.distance_meters)} m
             </div>
-            ${pz.date_mesure ? `<div class="text-[10px] text-slate-400">Dernière mesure : ${pz.date_mesure}</div>` : ""}
+            ${pz.date_mesure ? `<div class="text-[11px] text-slate-500">Dernière mesure : ${pz.date_mesure}</div>` : ""}
           </div>
         `;
         marker.bindPopup(content).addTo(markersGroup);
@@ -802,14 +814,14 @@ export default function MapInner({
               <Droplets className="h-3.5 w-3.5 text-cyan-700" />
               <span>Nappe au droit du site :</span>
             </div>
-            <span className="font-mono text-[10px] bg-cyan-100 text-cyan-900 px-1.5 py-0.5 rounded font-bold">
+            <span className="font-mono text-[11px] bg-cyan-100 text-cyan-900 px-1.5 py-0.5 rounded font-bold">
               {(bdlisaData.aquifere_superficiel || bdlisaData.formation_affleurante)?.code_eh}
             </span>
           </div>
           <div className="text-[11px] text-slate-800 font-semibold line-clamp-1">
             {(bdlisaData.aquifere_superficiel || bdlisaData.formation_affleurante)?.libelle_eh}
           </div>
-          <div className="text-[10px] text-slate-600 mt-1 flex items-center gap-1.5">
+          <div className="text-[11px] text-slate-600 mt-1 flex items-center gap-1.5">
             <span className="text-cyan-800 font-medium">
               {(bdlisaData.aquifere_superficiel || bdlisaData.formation_affleurante)?.nature_libelle}
             </span>

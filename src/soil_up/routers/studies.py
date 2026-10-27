@@ -18,6 +18,7 @@ from soil_up.services.hubeau_piezo import HubeauPiezometrieConnector
 from soil_up.services.inpn import InpnConnector
 from soil_up.services.bdlisa import BdlisaConnector
 from soil_up.services.groundwater_level import GroundwaterLevelService
+from soil_up.services.lithologie import LithologieService
 from soil_up.services.report import ReportGeneratorService
 
 router = APIRouter(prefix="/api/studies", tags=["Studies"])
@@ -28,6 +29,7 @@ hubeau_piezo_connector = HubeauPiezometrieConnector()
 inpn_connector = InpnConnector()
 bdlisa_connector = BdlisaConnector()
 groundwater_service = GroundwaterLevelService()
+lithologie_service = LithologieService()
 report_service = ReportGeneratorService()
 
 @router.post("", response_model=StudyResponse, status_code=status.HTTP_201_CREATED)
@@ -111,6 +113,7 @@ async def collect_study_data(study_id: int, db: Session = Depends(get_db)):
             "piezometrie": [],
             "zonages_naturels": [],
             "bdlisa": None,
+            "lithologie": None,
             "errors": {},
         }
 
@@ -164,6 +167,7 @@ async def collect_study_data(study_id: int, db: Session = Depends(get_db)):
                 collected_data["errors"]["bdlisa"] = bdlisa_res.error
 
         # 7. Estimation Hydrogéologique de la Nappe au droit du site
+        gw_estimation = None
         try:
             gw_estimation = groundwater_service.estimate(
                 altimetrie=alti_res if not isinstance(alti_res, Exception) else None,
@@ -173,6 +177,18 @@ async def collect_study_data(study_id: int, db: Session = Depends(get_db)):
             collected_data["groundwater_level"] = gw_estimation.model_dump()
         except Exception as gw_exc:
             collected_data["errors"]["groundwater_level"] = str(gw_exc)
+
+        # 8. Reconstitution Lithologique & Logs de sondages (NF X 31-620)
+        try:
+            litho_synthesis = lithologie_service.synthesize(
+                altimetrie=alti_res if not isinstance(alti_res, Exception) else None,
+                groundwater=gw_estimation,
+                bdlisa=bdlisa_res if not isinstance(bdlisa_res, Exception) else None,
+                bss=bss_res if not isinstance(bss_res, Exception) else None,
+            )
+            collected_data["lithologie"] = litho_synthesis.model_dump()
+        except Exception as litho_exc:
+            collected_data["errors"]["lithologie"] = str(litho_exc)
 
         has_errors = bool(collected_data["errors"])
         record.status = "partial_error" if has_errors else "completed"

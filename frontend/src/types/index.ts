@@ -95,6 +95,7 @@ export interface BssBoreholeItem {
   reference: string;
   bss_id?: string;
   nom_commune?: string;
+  lieu_dit?: string;
   nature?: string;
   prof_atteinte?: number;
   zsol?: number;
@@ -103,6 +104,10 @@ export interface BssBoreholeItem {
   cote_eau_calculee?: number;
   coupe_disponible: boolean;
   nb_scans_coupe?: number;
+  auteur_coupe?: string;
+  date_coupe?: string;
+  mode_execution?: string;
+  documents?: string;
   url_infoterre: string;
   latitude: number;
   longitude: number;
@@ -187,6 +192,27 @@ export interface BdlisaResult {
   error?: string | null;
 }
 
+export interface LithologieLayerItem {
+  profondeur_toit_m: number;
+  profondeur_base_m?: number | null;
+  cote_ngf_toit?: number | null;
+  cote_ngf_base?: number | null;
+  designation: string;
+  lithologie: string;
+  permeabilite: string;
+  type_couche: "remblais" | "alluvions" | "aquifere" | "substratum" | string;
+  est_zone_saturee: boolean;
+}
+
+export interface LithologieSynthesis {
+  formation_surface: string;
+  contexte_regional: string;
+  layers: LithologieLayerItem[];
+  nb_forages_coupes: number;
+  forage_reference?: BssBoreholeItem | null;
+  description_synthese: string;
+}
+
 export interface CollectedData {
   casias?: CasiasItem[];
   icpe?: IcpeItem[];
@@ -196,6 +222,7 @@ export interface CollectedData {
   groundwater_level?: GroundwaterLevelEstimation;
   zonages_naturels?: ZonageNaturelItem[];
   bdlisa?: BdlisaResult | null;
+  lithologie?: LithologieSynthesis | null;
   errors?: Record<string, string>;
   error?: string;
 }

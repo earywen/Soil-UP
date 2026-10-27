@@ -139,6 +139,44 @@ class ReportGeneratorService:
         else:
             doc.add_paragraph("Données altimétriques non disponibles pour ce secteur.")
 
+        # Reconstitution Lithologique au droit du site (NF X 31-620)
+        litho = collected_data.get("lithologie")
+        if litho:
+            p_litho = doc.add_paragraph()
+            r_litho = p_litho.add_run("Profil Lithologique et Stratigraphique Reconstitué (NF X 31-620) : ")
+            r_litho.bold = True
+            p_litho.add_run(litho.get("description_synthese", ""))
+
+            layers = litho.get("layers", [])
+            if layers:
+                litho_table = doc.add_table(rows=1, cols=5)
+                litho_table.alignment = WD_TABLE_ALIGNMENT.CENTER
+                litho_table.style = "Table Grid"
+                l_headers = ["Profondeur (m/sol)", "Cote (m NGF)", "Horizon géologique", "Lithologie & Faciès", "Perméabilité & Nappe"]
+                for col_idx, htext in enumerate(l_headers):
+                    cell = litho_table.cell(0, col_idx)
+                    cell.text = htext
+                    cell.paragraphs[0].runs[0].font.bold = True
+
+                for lay in layers:
+                    row_cells = litho_table.add_row().cells
+                    p_toit = lay.get("profondeur_toit_m", 0.0)
+                    p_base = lay.get("profondeur_base_m")
+                    prof_str = f"{p_toit} à {p_base} m" if p_base is not None else f"> {p_toit} m"
+                    
+                    z_toit = lay.get("cote_ngf_toit")
+                    z_base = lay.get("cote_ngf_base")
+                    cote_str = f"{z_toit} à {z_base} m" if (z_toit is not None and z_base is not None) else f"< {z_toit} m" if z_toit is not None else "n.d."
+
+                    row_cells[0].text = prof_str
+                    row_cells[1].text = cote_str
+                    row_cells[2].text = str(lay.get("designation", "-"))
+                    row_cells[3].text = str(lay.get("lithologie", "-"))
+                    sat_label = " (Zone saturée)" if lay.get("est_zone_saturee") else ""
+                    row_cells[4].text = f"{lay.get('permeabilite', '-')}{sat_label}"
+
+            doc.add_paragraph()
+
         # Entités Hydrogéologiques BDLISA (Sandre / BRGM)
         bdlisa = collected_data.get("bdlisa")
         p_bdlisa = doc.add_paragraph()

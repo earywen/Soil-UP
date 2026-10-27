@@ -16,6 +16,8 @@ import {
   Droplets,
   ChevronDown,
   ChevronUp,
+  FileText,
+  ExternalLink,
 } from "lucide-react";
 import {
   AddressResultItem,
@@ -82,6 +84,7 @@ export default function WorkflowPanel({
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [showGwDetails, setShowGwDetails] = useState(false);
   const [showBdlisaPile, setShowBdlisaPile] = useState(false);
+  const [showLithoCoupes, setShowLithoCoupes] = useState(false);
 
   const handleAddressChange = (val: string) => {
     setAddressQuery(val);
@@ -240,6 +243,7 @@ export default function WorkflowPanel({
   const alti = study?.collected_data?.altimetrie;
   const gw = study?.collected_data?.groundwater_level;
   const bdlisa = study?.collected_data?.bdlisa;
+  const litho = study?.collected_data?.lithologie;
 
   return (
     <aside className="w-full h-full flex flex-col bg-slate-50 border-r border-slate-200 shadow-sm z-10 overflow-hidden">
@@ -564,7 +568,7 @@ export default function WorkflowPanel({
                 <div className="text-base font-bold text-slate-900 tabular-nums">
                   {casiasCount} site(s)
                 </div>
-                <div className="text-[10px] text-slate-500">Activités industrielles</div>
+                <div className="text-[11px] text-slate-500">Activités industrielles</div>
               </div>
 
               <div className="p-2.5 bg-white border border-red-200 rounded-md">
@@ -572,7 +576,7 @@ export default function WorkflowPanel({
                 <div className="text-base font-bold text-slate-900 tabular-nums">
                   {icpeCount} site(s)
                 </div>
-                <div className="text-[10px] text-slate-500">Régimes préfectoraux</div>
+                <div className="text-[11px] text-slate-500">Régimes préfectoraux</div>
               </div>
 
               <div className="p-2.5 bg-white border border-emerald-200 rounded-md">
@@ -580,7 +584,7 @@ export default function WorkflowPanel({
                 <div className="text-base font-bold text-slate-900 tabular-nums">
                   {bssCount} ouvrage(s)
                 </div>
-                <div className="text-[10px] text-emerald-700 font-semibold">
+                <div className="text-[11px] text-emerald-700 font-semibold">
                   {bssWithWaterCount > 0
                     ? `${bssCoupesCount} coupes • ${bssWithWaterCount} avec eau`
                     : `${bssCoupesCount} coupe(s) numérisée(s)`}
@@ -592,7 +596,7 @@ export default function WorkflowPanel({
                 <div className="text-base font-bold text-slate-900 tabular-nums">
                   {piezoCount > 0 ? `${piezoCount} station(s)` : "0 station"}
                 </div>
-                <div className="text-[10px] text-slate-500">
+                <div className="text-[11px] text-slate-500">
                   {piezoCount > 0 ? "Chronique piézométrique" : "Aucun piézo ADES à 500m"}
                 </div>
               </div>
@@ -607,7 +611,7 @@ export default function WorkflowPanel({
                     <span>Nappe au droit du site</span>
                   </div>
                   <span
-                    className={`text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider ${
+                    className={`text-[11px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider ${
                       gw.indice_confiance === "Élevé"
                         ? "bg-emerald-100 text-emerald-800 border border-emerald-300"
                         : gw.indice_confiance === "Moyen"
@@ -642,7 +646,7 @@ export default function WorkflowPanel({
                     Fourchette locale : <b>{gw.profondeur_min_m} m</b> à <b>{gw.profondeur_max_m} m</b>
                   </span>
                   {gw.altitude_site_ngf && (
-                    <span className="font-mono text-slate-500 text-[10px]">
+                    <span className="font-mono text-slate-500 text-[11px]">
                       LiDAR site : {gw.altitude_site_ngf} m
                     </span>
                   )}
@@ -688,10 +692,10 @@ export default function WorkflowPanel({
                           >
                             <div>
                               <span className="font-mono font-bold text-slate-800">{pt.identifiant}</span>
-                              <span className="text-slate-500 text-[10px] ml-1.5">
+                              <span className="text-slate-500 text-[11px] ml-1.5">
                                 ({pt.source === "HUB_EAU" ? "Piézo ADES" : "Forage BSS"})
                               </span>
-                              <div className="text-[10px] text-slate-600">
+                              <div className="text-[11px] text-slate-600">
                                 {pt.prof_eau_sol !== undefined && pt.prof_eau_sol !== null
                                   ? `Eau à ${pt.prof_eau_sol} m/sol`
                                   : ""}{" "}
@@ -700,11 +704,189 @@ export default function WorkflowPanel({
                                   : ""}
                               </div>
                             </div>
-                            <span className="font-mono text-slate-600 font-semibold text-[10px]">
+                            <span className="font-mono text-slate-600 font-semibold text-[11px]">
                               {Math.round(pt.distance_meters)} m
                             </span>
                           </div>
                         ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Reconstructed Lithology & Geological Cross-Section (NF X 31-620) */}
+            {litho && litho.layers && litho.layers.length > 0 && (
+              <div className="p-3.5 bg-gradient-to-br from-amber-50/20 via-white to-slate-50 border border-slate-300 rounded-lg shadow-xs space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-1.5 text-xs font-bold text-slate-900 uppercase tracking-wide">
+                    <Layers className="h-4 w-4 text-[#1b4332]" />
+                    <span>Lithologie au droit du site (NF X 31-620)</span>
+                  </div>
+                  <span className="text-[11px] font-semibold bg-emerald-100 text-emerald-900 px-2 py-0.5 rounded-full border border-emerald-300">
+                    {litho.layers.length} horizons
+                  </span>
+                </div>
+
+                {/* Synthesis Quote */}
+                {litho.description_synthese && (
+                  <div className="text-[11px] text-slate-700 bg-slate-50 p-2.5 rounded border border-slate-200 leading-relaxed italic">
+                    « {litho.description_synthese} »
+                  </div>
+                )}
+
+                {/* Vertical Stratigraphic Column */}
+                <div className="space-y-1.5 pt-1">
+                  <div className="flex items-center justify-between text-[11px] text-slate-600 font-semibold uppercase tracking-wider pb-0.5 border-b border-slate-200">
+                    <span>Profondeur &amp; Cote NGF</span>
+                    <span>Horizon &amp; Lithologie</span>
+                  </div>
+
+                  {litho.layers.map((layer, idx) => {
+                    let depthBoxClass = "bg-amber-50/80 border-amber-200 text-amber-950";
+                    let badgeClass = "bg-amber-100 text-amber-900 border-amber-300";
+                    let bulletColor = "bg-amber-500";
+
+                    if (layer.type_couche === "alluvions") {
+                      depthBoxClass = "bg-yellow-50/80 border-yellow-200 text-yellow-950";
+                      badgeClass = "bg-yellow-100 text-yellow-900 border-yellow-300";
+                      bulletColor = "bg-yellow-500";
+                    } else if (layer.type_couche === "aquifere" || layer.est_zone_saturee) {
+                      depthBoxClass = "bg-cyan-50/80 border-cyan-200 text-cyan-950";
+                      badgeClass = "bg-cyan-100 text-cyan-900 border-cyan-300";
+                      bulletColor = "bg-cyan-600";
+                    } else if (layer.type_couche === "substratum") {
+                      depthBoxClass = "bg-slate-100 border-slate-200 text-slate-900";
+                      badgeClass = "bg-slate-200 text-slate-800 border-slate-300";
+                      bulletColor = "bg-[#1b4332]";
+                    }
+
+                    const depthLabel =
+                      layer.profondeur_base_m !== undefined && layer.profondeur_base_m !== null
+                        ? `${layer.profondeur_toit_m} à ${layer.profondeur_base_m} m`
+                        : `> ${layer.profondeur_toit_m} m`;
+
+                    const coteLabel =
+                      layer.cote_ngf_toit !== undefined && layer.cote_ngf_toit !== null
+                        ? layer.cote_ngf_base !== undefined && layer.cote_ngf_base !== null
+                          ? `${layer.cote_ngf_toit} → ${layer.cote_ngf_base} m NGF`
+                          : `< ${layer.cote_ngf_toit} m NGF`
+                        : null;
+
+                    return (
+                      <div
+                        key={`layer-${idx}`}
+                        className="p-2.5 rounded-md border border-slate-200 bg-white text-[11px] shadow-2xs transition-all hover:border-slate-300"
+                      >
+                        <div className="flex items-start justify-between gap-2.5">
+                          <div className={`shrink-0 w-28 p-1.5 rounded border text-center ${depthBoxClass}`}>
+                            <div className="flex items-center justify-center gap-1 mb-0.5">
+                              <span className={`h-1.5 w-1.5 rounded-full ${bulletColor}`} />
+                              <span className="font-mono font-bold text-xs tabular-nums">
+                                {depthLabel}
+                              </span>
+                            </div>
+                            {coteLabel && (
+                              <span className="font-mono text-[11px] block tabular-nums opacity-90">
+                                {coteLabel}
+                              </span>
+                            )}
+                          </div>
+
+                          <div className="grow min-w-0">
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <span className="font-bold text-slate-900 leading-snug">
+                                {layer.designation}
+                              </span>
+                              {layer.est_zone_saturee && (
+                                <span className="inline-flex items-center gap-0.5 text-[11px] font-bold px-1.5 py-0.5 rounded bg-cyan-100 text-cyan-900 border border-cyan-300">
+                                  <Droplets className="h-3 w-3 text-cyan-700" /> Nappe
+                                </span>
+                              )}
+                              <span className={`text-[11px] font-semibold px-1.5 py-0.5 rounded border ${badgeClass}`}>
+                                {layer.permeabilite}
+                              </span>
+                            </div>
+                            <p className="text-slate-700 mt-1 text-[11px] leading-relaxed">
+                              {layer.lithologie}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* Digitized BSS Geological Logs Accordion */}
+                {litho.nb_forages_coupes > 0 && (
+                  <div className="pt-1 border-t border-slate-200">
+                    <button
+                      type="button"
+                      onClick={() => setShowLithoCoupes(!showLithoCoupes)}
+                      className="w-full flex items-center justify-between text-[11px] font-bold text-[#1b4332] hover:text-[#2d6a4f] py-1 transition-colors cursor-pointer"
+                    >
+                      <div className="flex items-center gap-1.5">
+                        <FileText className="h-3.5 w-3.5 text-[#1b4332]" />
+                        <span>
+                          {showLithoCoupes
+                            ? "Masquer les coupes BSS numérisées"
+                            : `Consulter les coupes BSS numérisées (${litho.nb_forages_coupes} disponibles)`}
+                        </span>
+                      </div>
+                      {showLithoCoupes ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
+                    </button>
+
+                    {showLithoCoupes && study.collected_data?.bss && (
+                      <div className="mt-2 space-y-2 max-h-56 overflow-y-auto pr-1">
+                        {study.collected_data.bss
+                          .filter((b) => b.coupe_disponible)
+                          .map((b) => (
+                            <div
+                              key={b.reference}
+                              className="p-2.5 bg-white rounded border border-slate-200 shadow-2xs space-y-1.5 text-[11px]"
+                            >
+                              <div className="flex items-center justify-between">
+                                <span className="font-mono font-bold text-slate-900">{b.reference}</span>
+                                <span className="font-mono text-slate-600 font-semibold text-[11px]">
+                                  {Math.round(b.distance_meters)} m
+                                </span>
+                              </div>
+
+                              <div className="text-slate-700 text-[11px] space-y-0.5">
+                                <div>
+                                  <b>Profondeur atteinte :</b>{" "}
+                                  {b.prof_atteinte !== undefined && b.prof_atteinte !== null ? `${b.prof_atteinte} m` : "n.d."}
+                                  {b.prof_eau_sol !== undefined && b.prof_eau_sol !== null && (
+                                    <span className="text-cyan-800 font-medium ml-2">
+                                      (Eau : {b.prof_eau_sol} m/sol)
+                                    </span>
+                                  )}
+                                </div>
+                                {b.lieu_dit && (
+                                  <div>
+                                    <b>Lieu-dit :</b> {b.lieu_dit}
+                                  </div>
+                                )}
+                                {b.auteur_coupe && (
+                                  <div>
+                                    <b>Auteur / Date :</b> {b.auteur_coupe}{" "}
+                                    {b.date_coupe ? `(${b.date_coupe})` : ""}
+                                  </div>
+                                )}
+                              </div>
+
+                              <a
+                                href={b.url_infoterre}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center gap-1 text-[11px] font-semibold text-[#1b4332] hover:text-[#2d6a4f] hover:underline pt-0.5"
+                              >
+                                <span>Ouvrir la coupe numérisée sur InfoTerre</span>
+                                <ExternalLink className="h-3 w-3" />
+                              </a>
+                            </div>
+                          ))}
                       </div>
                     )}
                   </div>
@@ -720,13 +902,13 @@ export default function WorkflowPanel({
                     <Droplets className="h-4 w-4 text-cyan-700" />
                     <span>Aquifère BDLISA (Sandre / BRGM)</span>
                   </div>
-                  <span className="font-mono text-[10px] bg-cyan-100 text-cyan-900 px-2 py-0.5 rounded-full font-bold">
+                  <span className="font-mono text-[11px] bg-cyan-100 text-cyan-900 px-2 py-0.5 rounded-full font-bold">
                     {(bdlisa.aquifere_superficiel || bdlisa.formation_affleurante)?.code_eh}
                   </span>
                 </div>
 
                 <div>
-                  <span className="text-[10px] text-slate-500 font-medium block uppercase tracking-wider">
+                  <span className="text-[11px] text-slate-500 font-medium block uppercase tracking-wider">
                     {bdlisa.aquifere_superficiel ? "Aquifère superficiel sous le site" : "Formation géologique affleurante"}
                   </span>
                   <div className="text-xs font-bold text-slate-900 leading-snug mt-0.5">
@@ -736,13 +918,13 @@ export default function WorkflowPanel({
 
                 <div className="grid grid-cols-2 gap-1.5 text-[11px]">
                   <div className="p-2 bg-slate-50 rounded border border-slate-200">
-                    <span className="text-slate-500 block text-[10px] uppercase tracking-wide">Nature</span>
+                    <span className="text-slate-500 block text-[11px] uppercase tracking-wide">Nature</span>
                     <span className="font-semibold text-slate-900">
                       {(bdlisa.aquifere_superficiel || bdlisa.formation_affleurante)?.nature_libelle}
                     </span>
                   </div>
                   <div className="p-2 bg-slate-50 rounded border border-slate-200">
-                    <span className="text-slate-500 block text-[10px] uppercase tracking-wide">Milieu</span>
+                    <span className="text-slate-500 block text-[11px] uppercase tracking-wide">Milieu</span>
                     <span className="font-semibold text-slate-900">
                       {(bdlisa.aquifere_superficiel || bdlisa.formation_affleurante)?.milieu_libelle}
                     </span>
@@ -750,7 +932,7 @@ export default function WorkflowPanel({
                 </div>
 
                 <div className="p-2 bg-cyan-50/70 rounded border border-cyan-200 text-[11px] text-cyan-950">
-                  <span className="text-cyan-800 font-semibold block text-[10px] uppercase tracking-wide">Régime de nappe</span>
+                  <span className="text-cyan-800 font-semibold block text-[11px] uppercase tracking-wide">Régime de nappe</span>
                   <span className="font-medium">
                     {(bdlisa.aquifere_superficiel || bdlisa.formation_affleurante)?.etat_libelle}
                   </span>
@@ -785,9 +967,9 @@ export default function WorkflowPanel({
                             className="p-2 bg-white rounded border border-slate-200 text-[11px] space-y-0.5 shadow-2xs"
                           >
                             <div className="flex items-center justify-between">
-                              <span className="font-mono font-bold text-slate-800 text-[10px]">{f.code_eh}</span>
+                              <span className="font-mono font-bold text-slate-800 text-[11px]">{f.code_eh}</span>
                               <span
-                                className={`text-[9px] px-1.5 py-0.2 rounded font-semibold ${
+                                className={`text-[11px] px-1.5 py-0.5 rounded font-semibold ${
                                   f.est_aquifere
                                     ? "bg-emerald-100 text-emerald-800 border border-emerald-200"
                                     : "bg-slate-100 text-slate-700"
@@ -799,7 +981,7 @@ export default function WorkflowPanel({
                             <div className="text-slate-800 font-medium text-[11px] leading-tight">
                               {f.libelle_eh}
                             </div>
-                            <div className="text-slate-500 text-[10px]">
+                            <div className="text-slate-500 text-[11px]">
                               {f.milieu_libelle} • {f.etat_libelle}
                             </div>
                           </div>
@@ -848,7 +1030,7 @@ export default function WorkflowPanel({
                           href={b.url_infoterre}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className={`text-[10px] font-semibold px-1.5 py-0.5 rounded ${
+                          className={`text-[11px] font-semibold px-1.5 py-0.5 rounded ${
                             b.coupe_disponible ? "bg-emerald-100 text-emerald-800" : "bg-slate-200 text-slate-700"
                           } hover:underline`}
                         >
@@ -873,13 +1055,13 @@ export default function WorkflowPanel({
                     <div key={zn.id_mnhn} className="p-1.5 bg-slate-50 rounded border border-slate-200 text-[11px] flex items-center justify-between">
                       <div className="truncate mr-2">
                         <div className="font-semibold text-slate-800 truncate">{zn.nom_site}</div>
-                        <div className="text-[10px] text-slate-500">{zn.type_zonage} — {zn.statut_recoupement}</div>
+                        <div className="text-[11px] text-slate-500">{zn.type_zonage} — {zn.statut_recoupement}</div>
                       </div>
                       <a
                         href={zn.url_fiche}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="text-[10px] font-semibold text-blue-700 hover:text-blue-900 shrink-0 underline"
+                        className="text-[11px] font-semibold text-blue-700 hover:text-blue-900 shrink-0 underline"
                       >
                         INPN &rarr;
                       </a>
